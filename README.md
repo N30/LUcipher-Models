@@ -1,0 +1,2 @@
+If you are gonna use API to its full potential you can publish spatie query builder:
+php artisan vendor:publish --provider="Spatie\QueryBuilder\QueryBuilderServiceProvider" --tag="query-builder-config"

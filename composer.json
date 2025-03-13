@@ -1,0 +1,26 @@
+{
+	"name": "all1/lu_models",
+	"description": "",
+	"type": "library",
+	"version": "1.0",
+	"license": "proprietary",
+	"require": {
+       
+    },
+	"autoload": {
+		"psr-4": {
+			"All1\\LuModels\\": "src/",
+			"All1\\LuModels\\Tests\\": "tests/",
+			"All1\\LuModels\\Database\\Factories\\": "database/factories/",
+			"All1\\LuModels\\Database\\Seeders\\": "database/seeders/"
+		}
+	},
+	"minimum-stability": "stable",
+	"extra": {
+		"laravel": {
+			"providers": [
+				"All1\\LuModels\\Providers\\LuModelsServiceProvider"
+			]
+		}
+	}
+}
