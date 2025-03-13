@@ -1,3 +1,4 @@
+<h1>Laravel Universal(created in php, html, etc...) Repo - Models Addon Package</h1>
 **NOT READY JUST UPLOADED FOR INTERNAL USE AS A PROJECT DEPENDENCY... BUT KINDA READY, USELESS WITHOUT DOCUMENTATION.**<br>
 Alright let me write a 30 second documentation. Upon install package can read all existing models and create fully functioning CRUD routes using similar to Laravel Resource routes at:<br><br>
 /api/{model}/{action}/{id?}<br>
