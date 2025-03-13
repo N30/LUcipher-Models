@@ -1,2 +1,1 @@
-If you are gonna use API to its full potential you can publish spatie query builder:
-php artisan vendor:publish --provider="Spatie\QueryBuilder\QueryBuilderServiceProvider" --tag="query-builder-config"
+Laravel Universal open-sourced package with automatic API, HTTP, Livewire Controllers, Laravel Actions, Verbs, Policy Support. Increasing development time by automating CRUD operations from Modern SPA like components down to fully functioning API under the hood. The package automatically builds APIs from models, utilizes the API to build traditional HTTP controller, and then builds the Livewire using the same components including views.
