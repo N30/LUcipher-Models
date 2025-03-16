@@ -20,12 +20,34 @@ class ResourceController extends ApiResourceController
             return $this->chooseView( $this->{$this->action}($id));
         }else {
             $result = parent::__invoke($request, $model, $action, $id);
+            //echo "Asda"; return false;
             //redirect back and flash message
+            $redirect_action = config("lu::models.after_".$this->action."_redirect");
+            
             if(isset($result['message'])) { 
-                session()->flash('flash.banner', $result['message']);
-                return redirect()->back()->with('messages', [$result['message']]);
+                
+                $toast_data = json_encode([
+                    'type'=>'success',
+                    'title'=>'Success',
+                   'description'=>$result['message']
+                ]);
+                session()->put('toast', $toast_data);
+                //dd("asdads");
+                
+               // if(config('lu_models::after_create_redirect')) {
+                 //   return redirect()->back()->with('messages', [$result['message']]);
+                if($redirect_action=='back'){ 
+                    return redirect()->back()->with('messages', [$result['message']]);
+                }else {
+                    return redirect()->route( request()->route()->getName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$result['data']->id ])->with('messages', [$result['message']]);
+                }
             }else {
-                return redirect()->back();
+                if($redirect_action=='back'){ 
+                    return redirect()->back();
+                }else {
+                    return redirect()
+                        ->route( request()->route()->getName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$result['data']->id ]);
+                } 
             }
             
         }
@@ -40,7 +62,7 @@ class ResourceController extends ApiResourceController
         if(view()->exists(Str::plural($this->route_prefix).'.'.$this->action)) { 
             return view( Str::plural($this->route_prefix).'.'.$this->action , ['data' => $data]);
         } else { 
-            return view('lu_models::web.'.$this->action ,  ['data'=> $data] )
+            return view($this->model->viewFile($this->action ),  ['data'=> $data] )
                 ->with('model', $this->model)
                 ->with('columns', $this->columns)
                 ->with('filters', $this->filters)

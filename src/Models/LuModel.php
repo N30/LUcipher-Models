@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use ReflectionClass;
 use ReflectionMethod;
+use Illuminate\Support\Facades\File;
 use Str;
 
 class LuModel extends Model
@@ -33,7 +34,22 @@ class LuModel extends Model
     public $default_loaded_relationships; 
 
  //needed for API assignment of these fields/whatever user can manipulate
-    public $action_folder = "Crud";
+    public $action_folder = "CRUD";
+
+    //safety features for sensitive models that we never want hacked
+    //creation safety uses create() with respect to $fillable
+    public $creation_safety = true;
+    //update safety uses fill() with respect to $fillable
+    public $update_safety = true;
+    public $read_safety = true;
+    public $delete_safety = true;
+
+    //allow public access to pages linke index, this can also be set in the config file globally for models
+    //however if policy exists it will override this
+    public $public_pages = []; //example: ['index', 'show'];
+
+    public $after_save_redirect ; //show, edit, index, create
+    public $after_destroy_redirect ; //show, edit, index, create
 
     public function displayText($column) {
         $data = $this->$column;
@@ -187,47 +203,29 @@ class LuModel extends Model
             ];
     }
 
-    public function createFromData($data) {
-        //chec if apllication has its on create action class in \Appl\Models\Action with name CreateModel
-        //dd('\App\Models\Actions\\'.$this->action_folder.'\Create'.ucfirst(class_basename($this)));
-        if(!class_exists('\App\Models\Actions\\'.$this->action_folder.'\Create'.ucfirst(class_basename($this)))) {
-            return \All1\LuModels\Actions\Create::run($data);
-        }else { //run that action
-            $action = '\App\Models\Actions\Create'.ucfirst(class_basename($this));
-            return $action::run($data);
+    public function fromData($action,$service, $data, $controller_type) {  
+        //this seemingly redundant syntax way of writing this is the only way I was able to get it to work preserving the model without turning it inot parent model LuModel
+       $x=  new \All1\LuModels\Services\LuModels();
+       $x->fromData($action,$service, $this, $data, $controller_type);
+    } 
+
+    public function viewFolder() {
+        $potential_folder = strtolower(Str::plural(class_basename($this->model) ));
+        if (File::exists(resource_path('views/'. $potential_folder)  )) {
+            $folder = $potential_folder;
+        } else {
+            // Folder does not exist
+            $folder = 'lu_models::web';
+        }
+        return  $folder;
+    }
+    
+    public function viewFile($action) {
+        if (view()->exists($this->viewFolder().'.'.$action)) {
+            return $this->viewFolder().'.'.$action;
+        } else {
+            return 'lu_models::web.'.$action;
         }
     }
     
-    public function updateFromData($data) {
-        //chec if apllication has its on create action class in \Appl\Models\Action with name CreateModel
-        //dd('\App\Models\Actions\\'.$this->action_folder.'\Create'.ucfirst(class_basename($this)));
-        if(!class_exists('\App\Models\Actions\\'.$this->action_folder.'\Update'.ucfirst(class_basename($this)))) {
-            return \All1\LuModels\Actions\Update::run($data);
-        }else { //run that action
-            $action = '\App\Models\Actions\Update'.ucfirst(class_basename($this));
-            return $action::run($data);
-        }
-    }
-
-    public function deleteFromData($data) {
-        //chec if apllication has its on create action class in \Appl\Models\Action with name CreateModel
-        //dd('\App\Models\Actions\\'.$this->action_folder.'\Create'.ucfirst(class_basename($this)));
-        if(!class_exists('\App\Models\Actions\\'.$this->action_folder.'\Delete'.ucfirst(class_basename($this)))) {
-            return \All1\LuModels\Actions\Delete::run($data);
-        }else { //run that action
-            $action = '\App\Models\Actions\Delete'.ucfirst(class_basename($this));
-            return $action::run($data);
-        }
-    }       
-
-    public function readFromData($data) {
-        //chec if apllication has its on create action class in \Appl\Models\Action with name CreateModel
-        //dd('\App\Models\Actions\\'.$this->action_folder.'\Create'.ucfirst(class_basename($this)));
-        if(!class_exists('\App\Models\Actions\\'.$this->action_folder.'\Read'.ucfirst(class_basename($this)))) {
-            return \All1\LuModels\Actions\Read::run($data);
-        }else { //run that action
-            $action = '\App\Models\Actions\Read'.ucfirst(class_basename($this));
-            return $action::run($data);
-        }
-    }
 }

@@ -11,20 +11,20 @@
 // Route::delete('/lu_models/{lu_model}', [LuModelsController::class, 'destroy'])->name('lu_models.destroy');
 
 //Route::middleware(['auth'])->group(function () {
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(config('lu::models.web_middleware'))->group(function () {
     Route::any('web/{model}/{action?}/{id?}', \All1\LuModels\Http\Controllers\ResourceController::class)->name('lu::web.resources');
 });
 
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['auth',/***** enforced as REST is just for developers and admin ******/'web'])->group(function () {
     Route::any('rest/{model}/{action?}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiRestController::class)->name('lu::rest.resources');
 });
 
 if (array_key_exists('auth:sanctum', App::make(\Illuminate\Routing\Router::class)->getMiddleware())) {
-Route::prefix('api')->middleware('api')->group( ['middleware' => 'auth:sanctum'], function() {
-      
-        Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
-   
-});
+    Route::prefix('api')->middleware('api')->group( ['middleware' => 'auth:sanctum'], function() {
+        
+            Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
+    
+    });
 } else {
     Route::prefix('api')->middleware('api')->group( function() {
         \Log::warning('auth:sanctum middleware not found useing unsecure API');
@@ -33,6 +33,6 @@ Route::prefix('api')->middleware('api')->group( ['middleware' => 'auth:sanctum']
 }
 
 //Route::middleware(['auth'])->group(function () {
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(config('lu::models.spa_middleware'))->group(function () {
     Route::any('spa/{model}/{action?}/{id?}', \All1\LuModels\Livewire\Master::class)->name('lu::spa.resources');
 });

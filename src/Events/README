@@ -1,0 +1,12 @@
+
+So Events folder seems pretty useless, kinda like View Components that can have a php in app/Views same thing
+they don't need to exist to fire the event a listener is all you need but since we are using Verb they can replace Events
+not sure if I will place them in Events Folder or their own Verbs folder but if they come back in here that is whay they are
+not real built-in laravel events but the Laravel Verbs package.
+
+Fire events without files; event('user.registered', ['user' => $user]);
+
+
+I already createdh these built-in events so I'll keep them here buy your application only needs to implement listeners
+listening to {model}.created and {model}.updated and {model}.deleted events. CRUD 
+ 

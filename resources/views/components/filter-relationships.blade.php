@@ -9,7 +9,7 @@
      :variant="$type=='spa' ? 'listbox' : 'default'" multiple
      placeholder="Choose Relationsips...">
      
-    @if(!is_array($model) && null !== ($model->getModelRelationships()))
+    @if(!is_array($model) && null !== ($model->default_loaded_relationships ))
      @foreach ($model->getModelRelationships() as $relationship)
          @if (isset($model->default_loaded_relationships) && in_array($relationship, $model->default_loaded_relationships??[]))
              <flux:select.option selected disabled>

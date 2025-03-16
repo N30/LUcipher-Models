@@ -1,4 +1,10 @@
-<x-lu_models::dynamic-layout :layout="config('lu::models.layout','components.layouts.app')">
+<?php if (!isset($layout)) {
+    $layout = config('lu::models.layout'); //config('models.layout');
+} else {
+    $layout = 'lu_models::empty-layout';
+}
+?>
+<x-lu_models::dynamic-layout :layout="$layout">
 
 
     
@@ -10,7 +16,7 @@
 
     @if (isset($columns))
 
-        <form action="{{ route('lu::web.resources', [$route_prefix, 'store']) }}" method="POST">
+        <form wire:submit='beforeStore' action="{{ route('lu::web.resources', [$route_prefix, 'store']) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -28,15 +34,15 @@
                             <span class="text-red-500 absolute -mt-1 -ml-2">*</span>
                         @endif
                         @if ($c['input_type'] == 'textarea')
-                            <flux:textarea :maxlenght="$c['max_length']" :name="$c['Field']"  
+                            <flux:textarea :maxlenght="$c['max_length']" :name="$c['Field']" wire:model="model_attributes.{{ $c['Field'] }}"  
                                 :type="$c['Type']" :label="$label" :description="$c['description']"
                                 :required="$c['required']" />
                         @elseif($c['input_type'] == 'date')
-                            <flux:date-picker :maxlenght="$c['max_length']" :name="$c['Field']"
+                            <flux:date-picker :maxlenght="$c['max_length']" :name="$c['Field']" wire:model="model_attributes.{{ $c['Field'] }}"  
                                  :type="$c['Type']" :label="$label"
                                 :description="$c['description']" :required="$c['required']" />
                         @else
-                            <flux:input :placeholder="'e.g. '.$c['sample']" :maxlenght="$c['max_length']"
+                            <flux:input :placeholder="'e.g. '.$c['sample']" :maxlenght="$c['max_length']" wire:model="model_attributes.{{ $c['Field'] }}"  
                                 :name="$c['Field']"   :type="$c['Type']"
                                 :label="$label" :description="$c['description']" :required="$c['required']" />
                         @endif

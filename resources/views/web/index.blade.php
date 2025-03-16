@@ -5,9 +5,9 @@
 }
 ?>
 <x-lu_models::dynamic-layout :layout="$layout">
-
-
-    <flux:button href="{{ route('lu::web.resources', [$route_prefix, 'create']) }}" variant="primary" size="sm"
+ 
+        
+    <flux:button href="{{ route('lu::'.$controller_type.'.resources', [$route_prefix, 'create']) }}" variant="primary" size="sm"
         class="float-end">
         {{ __('Create New') }} {{ __(config('lu::models.lang_prefix') . $route_prefix) }}
     </flux:button>

@@ -33,6 +33,7 @@ class ApiRestController extends ApiResourceController
  
     }
 
+    
     public function chooseView( $data)
     {
          
@@ -40,9 +41,10 @@ class ApiRestController extends ApiResourceController
         if(view()->exists(Str::plural($this->route_prefix).'.'.$this->action)) { 
             return view( Str::plural($this->route_prefix).'.'.$this->action , ['data' => $data]);
         } else { 
-            return view('lu_models::rest.'.$this->action ,  ['data'=> $data] )
+            return view('lu_models::web.'.$this->action ,  ['data'=> $data] )
                 ->with('model', $this->model)
                 ->with('columns', $this->columns)
+                ->with('filters', $this->filters)
                 ->with('route_prefix', $this->route_prefix)
                 ->with('meta', $this->meta)
                 ->with('db_columns', $this->db_columns)

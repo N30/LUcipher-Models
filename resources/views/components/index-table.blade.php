@@ -83,7 +83,7 @@
 
                             <flux:menu.separator />
                             <form method="POST"
-                                action="{{ route('lu::api.resources', [$route_prefix, 'destroy', $model->id??NULL]) }}">
+                                action="{{ route('lu::'.$type.'.resources', [$route_prefix, 'destroy', $model->id??NULL]) }}">
                                 @csrf
                                 @method('DELETE')
 

@@ -4,7 +4,7 @@ namespace All1\LuModels\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use Str; 
- //use All1\LuModels\Services\LuModels;
+ //use \All1\LuModels\Services\LuModels;
 
 class ApiResourceController
 {
@@ -29,13 +29,13 @@ class ApiResourceController
 
     */
 
-    public function __construct()
+    public function __construct($force_model=null)
     {
-        
-        $this->controller_type = request()->route('type')??'web';
+        $model = request()->route('model') ?? $force_model;
+        $this->controller_type =  explode('.',Str::after( request()->route()->getName() ,'lu::'))[0];
         //$input = explode('/', request()->path());
         $this->service = new \All1\LuModels\Services\LuModels();
-        $controller_data = $this->service->controller_initialize($this->controller_type);
+        $controller_data = $this->service->controller_initialize($this->controller_type,$model);
         $this->model = $this->service->model;
         $this->route_prefix = $controller_data['route_prefix'];
         $this->action = request()->route('action')??'index';//isset($input[2])? $input[2] : 'index';
@@ -48,7 +48,7 @@ class ApiResourceController
     /**
      * Display a listing of the resource.
      */
-    public function __invoke(Request $request, $model=null, $action=null, $id=null)
+    public function __invoke(Request $request,  $model=null, $action=null, $id=null)
     {
         /*switch($this->aciton) {
             case 'list':
@@ -56,11 +56,14 @@ class ApiResourceController
                 break;
         }*/ 
        // dd("TEST");
+       //get this route name
+        
        $method = $request->method();
+        
        if($method=='GET') {
             $methodName = $action;
        }else {
-            $methodName = strtolower($method).'_'.ucfirst($action);  
+            $methodName = strtolower($method).ucfirst($action);  //used to have underline between
        }
         return ($this->{$this->action}($id));
     }
@@ -73,8 +76,9 @@ class ApiResourceController
 
     public function index($a=null)
     { 
-         $data = $this->service->controller_index();
-         $this->filters = $this->service->filters;
+            $this->service = \All1\LuModels\Services\LuModels::fromData('index',$this->service, $this->model, request()->all(), $this->controller_type);
+            $data = $this->service->data;
+            $this->filters = $this->service->filters;
             $this->db_columns = $this->service->db_columns;
             $this->model = $this->service->model;
             $this->columns = $this->service->controller_data['columns'];
@@ -89,42 +93,72 @@ class ApiResourceController
 
     public function show($id)
     {
-        return $this->model->find($id);
+        $this->model = $this->model->find($id);
+        $this->service = \All1\LuModels\Services\LuModels::fromData('read',$this->service, $this->model, request()->all(), $this->controller_type);
+        $this->model = $this->service->model;
+            $data = $this->service->data;
+            $this->filters = $this->service->filters;
+            $this->db_columns = $this->service->db_columns;
+            $this->model = $this->service->model;
+            $this->columns = $this->service->controller_data['columns'];
+            $this->route_prefix = $this->service->controller_data['route_prefix'];
+            $this->action = $this->service->controller_data['action'];
+            $this->meta = $this->service->controller_data['meta'];
+            $this->controller_type = $this->service->type;
+         return $data;
     }
 
     public function edit($id)
     {
         $this->model = ( $this->model->find($id) );
+ 
+        if( method_exists($this->model, 'readFromData') ) { 
 
-        $this->model->readFromData( request()->all() );
+            $this->service  = $this->model->fromData('read', request()->except(['_token', '_method']));
 
+        } else {
+            $this->service = \All1\LuModels\Services\LuModels::fromData('read', $this->service, $this->model, request()->all(), $this->controller_type );
+        }
+        $this->model = $this->service->model;
         return $this->model;
     }
 
-    public function store()
+    public function store( $data = null)
     {
+        if(!isset($data))  $data = request()->except(['_token', '_method']);   
 
         //see if model has slug by checking if it has method getSlugOptions
         if( method_exists($this->model, 'getSlugOptions') ){
             $slug_col = $this->model->getSlugOptions()->generateSlugFrom[0];
             $slug = \Str::slug(request()->$slug_col);
-            $data =  array_merge(  request()->except(['_token', '_method']) , ['slug'=> $slug ]);
-        }else {
-            $data = request()->except(['_token', '_method']);           
+            $data =  array_merge( $data , ['slug'=> $slug ]);
+        } 
+         
+        //pass data and controller_type web, api, spa, etc.... (for record keeping)
+        $model_copy_since_method_exist_is_mutating_it = $this->model;
+        if(    method_exists($this->model, 'createFromData') ) {  
+            $data = $this->model->fromData('create', $this->service,  $data  , $this->controller_type );
+        } else {  
+            $data = \All1\LuModels\Services\LuModels::fromData('create', $this->service, $model_copy_since_method_exist_is_mutating_it, $data, $this->controller_type );
         }
-
-        $data = $this->model->createFromData(  $data  );
-
+ 
         return ['message' => 'Record created', 'data' => $data ];
     }
 
-    public function update($id)
+    public function update($id, $data=null)
     {
+        if(!isset($data))  $data = request()->except(['_token', '_method']);
+
         $obj = $this->model->find($id);
         if(!$obj){
             return ['message' => 'Record not found', 'data' => [] ];
+        } 
+
+        if( method_exists($obj, 'updateFromData') ) { 
+            $data = $obj->fromData('update', $data);
+        } else {
+            $data = \All1\LuModels\Services\LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type );
         }
-        $data = $obj->updateFromData( request()->all() );
 
         return ['message' => 'Record updated', 'data' => $data ];
     }
@@ -141,11 +175,13 @@ class ApiResourceController
         //check if auth user owns the record
         //if not abort
         //if yes delete
-        try {
-            $data = $obj->deleteFromData( request()->all() );
+        
+            if( method_exists($obj, 'deleteFromData') ) { 
+                $data = $obj->fromData('delete', request()->except(['_token', '_method']));
+            } else {
+                $data = \All1\LuModels\Services\LuModels::fromData('delete', $this->service, $obj, request()->except(['_token', '_method']), $this->controller_type );
+            }
             return ['message' => 'Record deleted', 'data' => $data ];
-        } catch (\Throwable $e) {
-            return ['message' => 'Record not deleted' ];
-        }
+        
     }
 }

@@ -4,7 +4,8 @@ namespace All1\LuModels\View\Components;
 
 use Closure;
 use Illuminate\Contracts\View\View;
-use Illuminate\View\Component;
+use Illuminate\View\Component; 
+use \All1\LuModels\Models\LuModel;
 
 class Navlist extends Component
 {
@@ -28,4 +29,6 @@ class Navlist extends Component
             ->with('type',$this->type)
             ->with('iterable',$list);
     }
+
+    
 }
