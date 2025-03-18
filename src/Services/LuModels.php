@@ -28,7 +28,7 @@ class LuModels
         if(!in_array($this->controller_data['action'], ['exception_actions_that_dont_need_model', 'another_one'])){
 
             //get the model name from the first folder in the url
-           
+            
             $tmp = str_replace('~', '\\-', $model_variable);
             //turn $model to from reout group name to model name
             $relative_namespace = Str::studly(Str::singular($tmp));  
@@ -56,7 +56,7 @@ class LuModels
  
             //$this->controller_data['columns'] = \Schema::getColumnListing($this->controller_data['model->getTable()) ;
             $this->controller_data['columns'] = \DB::select('SHOW FULL COLUMNS FROM '.$this->model->getTable());
- 
+            
             $sample=NULL;
             if(in_array($this->controller_data['action'], ['create','edit','need_sample']))  $sample = $this->model->first();
 

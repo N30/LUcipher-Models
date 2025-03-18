@@ -94,6 +94,14 @@ class Master extends Component
         });
         
         $this->store($filteredData);
+
+        $rules = [];
+        foreach($this->model->store_validation_rules as $k=>$v) {
+            $rules['model_attributes.'.$k] = $v;
+        }
+        $validated = $this->validate($rules);
+
+        
     }
 
     public function store($filteredData) {

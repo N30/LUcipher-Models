@@ -12,6 +12,7 @@ use Str;
 class LuModel extends Model
 {
 
+     
     public $index_columns = ['id', 'created_at' ];
 
     //these are removed from the API and also views from display
@@ -50,6 +51,13 @@ class LuModel extends Model
 
     public $after_save_redirect ; //show, edit, index, create
     public $after_destroy_redirect ; //show, edit, index, create
+
+    //highly recommended to keep these off 99% of time if public needs access should be encrypted IDs
+    //THE ONLY REASON I DIDN"T ENFORCE THIS WITHOUT AN OPTION IS FOR USAGE WHERE ANY SECURITY CONCERN IS RIDICULOUS
+    //ALSO KEEP IN MIND THIS IS JUST FOR lu::web.resources ROUTES THAT ARE VERY DYNAMIC YOU CAN USE SLUGS WHERE IT MAKES SENSE IN PUBLIC CONTROLLERS
+    public $allow_public_access_by_id = false; //for publicly accessible routes that cant be controlled by policy may be security concern
+    public $allow_public_access_by_slug = false;//same for slugs though slight depending on model harder to guess
+    public $allow_any_unencrypred_access = false; //SECURE THE FORT DOWN AND GIVE EVERYTHING AN ID 
 
     public function displayText($column) {
         $data = $this->$column;
@@ -165,27 +173,34 @@ class LuModel extends Model
             foreach(['web','api','spa','rest'] as $route_type){
 
                 foreach(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'] as $action){
-                    $route = route('lu::'.$route_type.'.resources', ['model'=>$route_group, 'action'=>$action]);
+                    $routeName='lu::'.$route_type.'.resources';
+                    //check if route exists
+                     
+                    $route = route($routeName, ['model'=>$route_group, 'action'=>$action]);
 
-                    $routes[$route_type][$action] = [
-                        'url'=>$route,
-                        'method'=> match($action){
-                            'index'=>'GET',
-                            'create'=>'GET',
-                            'store'=>'POST',
-                            'show'=>'GET',
-                            'edit'=>'GET',
-                            'update'=>'PUT',
-                            'destroy'=>'DELETE',
-                        },
-                        'dynamic'=> match($action){
-                            'show'=>true,
-                            'edit'=>true,
-                            'update'=>true,
-                            'destroy'=>true,
-                            default=>false
-                        }
-                    ];
+                    if(!\Route::has($routeName)) {
+                        continue;
+                    }else { 
+                        $routes[$route_type][$action] = [
+                            'url'=>$route,
+                            'method'=> match($action){
+                                'index'=>'GET',
+                                'create'=>'GET',
+                                'store'=>'POST',
+                                'show'=>'GET',
+                                'edit'=>'GET',
+                                'update'=>'PUT',
+                                'destroy'=>'DELETE',
+                            },
+                            'dynamic'=> match($action){
+                                'show'=>true,
+                                'edit'=>true,
+                                'update'=>true,
+                                'destroy'=>true,
+                                default=>false
+                            }
+                        ];
+                    }
                 }
             }
 
@@ -206,7 +221,7 @@ class LuModel extends Model
     public function fromData($action,$service, $data, $controller_type) {  
         //this seemingly redundant syntax way of writing this is the only way I was able to get it to work preserving the model without turning it inot parent model LuModel
        $x=  new \All1\LuModels\Services\LuModels();
-       $x->fromData($action,$service, $this, $data, $controller_type);
+       return $x->fromData($action,$service, $this, $data, $controller_type);
     } 
 
     public function viewFolder() {

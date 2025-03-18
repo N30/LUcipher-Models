@@ -4,6 +4,7 @@ namespace All1\LuModels\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use Str; 
+use Validator;
  //use \All1\LuModels\Services\LuModels;
 
 class ApiResourceController
@@ -93,7 +94,32 @@ class ApiResourceController
 
     public function show($id)
     {
-        $this->model = $this->model->find($id);
+        //if id is in encrypted format decrypt
+        if( strlen($id) > 20 && !is_numeric($id) ) {
+            $id = decrypt($id);
+            $passed_id_type = 'encrypted';
+        }elseif(is_numeric($id)) {
+            $id = (int)$id;
+            $passed_id_type = 'plain';
+            if(!auth()->check() && $this->model->allow_public_access_by_id==false) {
+                abort(403, 'You must be authenticated by API or login in order to view this record through this URL');
+            }
+        }else {
+            $passed_id_type = 'slug';
+            if(!auth()->check() && $this->model->allow_public_access_by_slug==false) {
+                abort(403, 'You must be authenticated by API or login in order to view this record through this URL');  
+            }
+        }
+        if($passed_id_type!== 'encrypted' && $this->model->allow_any_unencrypred_access==false) {
+            abort(403, 'You must be authenticated by API or login in order to view this record through this URL');
+        }
+
+        if($passed_id_type=='slug') {
+            $this->model = $this->model->where('slug', $id)->first();
+        }else {
+            $this->model = $this->model->find($id);
+        }
+
         $this->service = \All1\LuModels\Services\LuModels::fromData('read',$this->service, $this->model, request()->all(), $this->controller_type);
         $this->model = $this->service->model;
             $data = $this->service->data;
@@ -125,15 +151,50 @@ class ApiResourceController
 
     public function store( $data = null)
     {
+        
         if(!isset($data))  $data = request()->except(['_token', '_method']);   
 
+        foreach($this->columns as $k=>$v) {
+            if($v['Key']=='PRI' && $v['Extra']=='auto_increment') {
+                unset($this->columns[$k]);
+            }
+            if($v['Field']=='ip_address') {
+                $data =  array_merge( $data , ['ip_address'=> request()->ip() ]);
+            }elseif($v['Field']=='user_id') {
+                $data =  array_merge( $data , ['user_id'=> auth()->id() ]);
+            }elseif($v['Field']=='user_agent') {
+                $data =  array_merge( $data , ['user_agent'=> request()->header('User-Agent') ]);
+            }
+        }
+        //opinionated type hinting LuModel rule:
+        //foreach session starting with {model}_ that exists in db table but not in submissions add to attributesafterAll(function () {
+        foreach( (session()->all()) as $k=>$v) {
+            if( Str::startsWith($k, strtolower($this->model_name).'_') && !array_key_exists($k, $data) ) {
+                //check it exists in db columns
+                $exists = false;
+                $pure_name = Str::after($k, strtolower($this->model_name).'_');
+                foreach($this->columns as $col) {
+                    if($col['Field']==$pure_name) {
+                        $data =  array_merge( $data , [$pure_name=> $v ]);
+                    }
+                }
+            }
+        } 
+        
         //see if model has slug by checking if it has method getSlugOptions
         if( method_exists($this->model, 'getSlugOptions') ){
             $slug_col = $this->model->getSlugOptions()->generateSlugFrom[0];
             $slug = \Str::slug(request()->$slug_col);
             $data =  array_merge( $data , ['slug'=> $slug ]);
         } 
-         
+
+        $validator = Validator::make($data, $this->model->store_validation_rules);
+    
+        if ($validator->fails()) {
+            return ['errors'=>$validator ,'message'=>'There waas an issue with your input'];//)->withInput();
+        }
+
+        //dd($validated);
         //pass data and controller_type web, api, spa, etc.... (for record keeping)
         $model_copy_since_method_exist_is_mutating_it = $this->model;
         if(    method_exists($this->model, 'createFromData') ) {  
@@ -141,8 +202,11 @@ class ApiResourceController
         } else {  
             $data = \All1\LuModels\Services\LuModels::fromData('create', $this->service, $model_copy_since_method_exist_is_mutating_it, $data, $this->controller_type );
         }
- 
-        return ['message' => 'Record created', 'data' => $data ];
+        //get last inserted column by
+        //encrypt the id
+        $id = encrypt($data->model->id);
+
+        return ['message' => 'We have received and saved your information successfully.', 'data' => $data, 'id' => $id ];
     }
 
     public function update($id, $data=null)

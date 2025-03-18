@@ -14,22 +14,37 @@ class ResourceController extends ApiResourceController
     public function __invoke(Request $request, $model=null, $action='index', $id=null)
     {
         
-
+         
         $method = $request->method();
         if($method=='GET') {
             return $this->chooseView( $this->{$this->action}($id));
         }else {
+            
             $result = parent::__invoke($request, $model, $action, $id);
             //echo "Asda"; return false;
+            
             //redirect back and flash message
             $redirect_action = config("lu::models.after_".$this->action."_redirect");
-            
+            if(isset($result['errors'])) {
+                $popErrors = [];
+                foreach($result['errors']->errors()->all() as $error) {
+                    $popErrors[] =  json_encode([
+                        'type'=>'warning',
+                        'title'=>'Oops',
+                       'message'=>$error
+                    ]);
+                }
+                $toast_data = $popErrors;
+                session()->put('toast', $toast_data);
+                //dd(request()->input());
+                return back()->withErrors($result['errors'])->withInput();
+            }  
             if(isset($result['message'])) { 
                 
                 $toast_data = json_encode([
                     'type'=>'success',
                     'title'=>'Success',
-                   'description'=>$result['message']
+                   'message'=>$result['message']
                 ]);
                 session()->put('toast', $toast_data);
                 //dd("asdads");
@@ -39,7 +54,7 @@ class ResourceController extends ApiResourceController
                 if($redirect_action=='back'){ 
                     return redirect()->back()->with('messages', [$result['message']]);
                 }else {
-                    return redirect()->route( request()->route()->getName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$result['data']->id ])->with('messages', [$result['message']]);
+                    return redirect()->route( request()->route()->getName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$result['id']??$result['data']->id ])->with('messages', [$result['message']]);
                 }
             }else {
                 if($redirect_action=='back'){ 
@@ -60,9 +75,11 @@ class ResourceController extends ApiResourceController
          
         //if view file exists return view
         if(view()->exists(Str::plural($this->route_prefix).'.'.$this->action)) { 
-            return view( Str::plural($this->route_prefix).'.'.$this->action , ['data' => $data]);
+            $view= view( Str::plural($this->route_prefix).'.'.$this->action , ['data' => $data]);
         } else { 
-            return view($this->model->viewFile($this->action ),  ['data'=> $data] )
+            $view = view($this->model->viewFile($this->action ),  ['data'=> $data] );
+        }
+        return $view
                 ->with('model', $this->model)
                 ->with('columns', $this->columns)
                 ->with('filters', $this->filters)
@@ -71,6 +88,6 @@ class ResourceController extends ApiResourceController
                 ->with('db_columns', $this->db_columns)
                 ->with('controller_type', $this->controller_type)
                 ->with('action', $this->action);
-        }
+        
     }
 }

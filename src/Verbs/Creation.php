@@ -16,6 +16,7 @@ class Creation extends Event
         $this->model = $model;
         $this->data = $data;
         $this->controller_type = $controller_type;
+        $this->service = $service;
     }
 
     public function handle()
@@ -25,7 +26,8 @@ class Creation extends Event
         $controller_type = $this->controller_type;
 
         if($model->creation_safety) {
-            $model->create($data);
+            //create in a way that ensures getting the id
+            $model = $model->create($data);
             //$model->fill($data);
             //$model->save(); 
         } else { 
@@ -34,7 +36,8 @@ class Creation extends Event
             }
             $model->save();
         }
-         
+ 
+        $this->service->model = $model;
         
         //See Events/README
         // Dispatch Laravel built-in event for side effects //example:app\Events\CRUD\UserCreated
@@ -44,8 +47,9 @@ class Creation extends Event
         }else { //run that action
               event(new \All1\LuModels\Events\Created($model, $data, $controller_type));
         }
+       
 
-        return $model;
+        return $this->service;
         //after this verbs execute
         //event(strtolower(class_basename($this)).'.created', ['data' => $data]); //<-- THIS IS THE EVENT YOU WANT TO LISTEN FOR
          

@@ -21,4 +21,11 @@
         'after_store_redirect'=>'show',//show, edit, index, create, back
         'after_destroy_redirect'=>'index',//show, edit, index, create, back
         'after_update_redirect'=>'show',//show, edit, index, create , back
+
+        //if you want to defined your own so you can place where conditions on routes or such
+        'enable_api_routes'=>false,//protected only with sanctum
+        'enable_web_routes'=>false,//protected  with Auth and Policies and above settings
+        'enable_spa_routes'=>false,//protected  with Auth and Policies and above settings
+        'enable_rest_routes'=>false,//protected  with Auth and Policies 
+        
     ];
