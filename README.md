@@ -40,3 +40,11 @@ protected $listen = [
         \App\Listeners\LogUserActivation::class,
     ],
 ];
+---
+
+## Versioning
+
+- **3.x (current, `master`/`main`)** — package renamed to the `lucipher/*` vendor, real
+  dependency constraints, security hardening. See `CHANGELOG.md` before upgrading.
+- **2.x (legacy)** — the line existing apps (e.g. LU-Contractor) were built against.
+  Pin the `v2.0.0` tag or the `2.x` branch to stay on it; legacy fixes land there only.

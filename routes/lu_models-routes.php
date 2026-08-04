@@ -30,10 +30,16 @@ if(config('lu::models.enable_api_routes')) {
         
         });
     } else {
-        Route::prefix('api')->middleware('api')->group( function() {
-            \Log::warning('auth:sanctum middleware not found useing unsecure API');
-            Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
-        });
+        //v3.0: fail closed. 2.x registered these routes UNAUTHENTICATED when sanctum was missing.
+        //If you genuinely need unauthenticated API resources, opt in via lu::models.allow_unauthenticated_api.
+        if (config('lu::models.allow_unauthenticated_api')) {
+            Route::prefix('api')->middleware('api')->group( function() {
+                \Log::warning('lu_models: auth:sanctum middleware not found — API resource routes are UNAUTHENTICATED (lu::models.allow_unauthenticated_api enabled)');
+                Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
+            });
+        } else {
+            \Log::warning('lu_models: auth:sanctum middleware not found — API resource routes NOT registered (set lu::models.allow_unauthenticated_api to override)');
+        }
     }
 }
 if(config('lu::models.enable_spa_routes')) {

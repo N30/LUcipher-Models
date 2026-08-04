@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, 2.x]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+      - name: PHP syntax check
+        run: |
+          set -e
+          find src config routes database -name '*.php' -print0 2>/dev/null | xargs -0 -n1 php -l

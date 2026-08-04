@@ -1,12 +1,18 @@
 {
-	"name": "n30/lu_models",
-	"description": "",
+	"name": "lucipher/models",
+	"description": "LuCipher Models: generic model-driven CRUD engine for Laravel — one controller family serving web, REST, API and SPA routes from Eloquent model metadata.",
 	"type": "library",
-	"version": "dev-master",
+	"version": "3.0.0",
 	"license": "proprietary",
 	"require": {
-       
-    },
+		"php": "^8.2",
+		"illuminate/support": "^11.0|^12.0",
+		"lucipher/unite": "^3.0"
+	},
+	"replace": {
+		"n30/lu_models": "self.version",
+		"all1/lu_models": "self.version"
+	},
 	"autoload": {
 		"psr-4": {
 			"All1\\LuModels\\": "src/",

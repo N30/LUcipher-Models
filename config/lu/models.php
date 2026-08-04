@@ -24,6 +24,8 @@
 
         //if you want to defined your own so you can place where conditions on routes or such
         'enable_api_routes'=>false,//protected only with sanctum
+        //v3.0: when sanctum is not installed API routes are NOT registered unless this is true (2.x registered them unauthenticated)
+        'allow_unauthenticated_api'=>false,
         'enable_web_routes'=>false,//protected  with Auth and Policies and above settings
         'enable_spa_routes'=>false,//protected  with Auth and Policies and above settings
         'enable_rest_routes'=>false,//protected  with Auth and Policies 

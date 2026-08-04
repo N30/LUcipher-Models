@@ -101,16 +101,17 @@ class LuModel extends Model
         $models = collect(\File::allFiles($modelPath))
             ->map(fn($file) => self::getNamespaceFromFile($file ).'\\'.pathinfo($file, PATHINFO_FILENAME ))
             ->all();
+        $response = [];
         foreach ($models as $model) {
 
             $meta = self::getMetaData($model);
             if(isset($meta['abstract']) && $meta['abstract']) {
                 continue;
             }
-            $responce[$model] = $meta;
+            $response[$model] = $meta;
         }
 
-        return $responce;
+        return $response;
     }
 
     public static function getNamespaceFromFile($file) {
@@ -121,24 +122,25 @@ class LuModel extends Model
         return null; // Return null if no namespace is found
     }
 
+    //v3.0: filters were inverted in 2.x (getLuModels returned NON-lu models and vice versa) — fixed to match their names
     public static function getLuModels() {
-        $responce = self::getModels();
-        foreach($responce as $key=>$model){
-            if( $model['extends_lu_model']) {
-                unset($responce[$key]);
+        $response = self::getModels();
+        foreach($response as $key=>$model){
+            if(! $model['extends_lu_model']) {
+                unset($response[$key]);
             }
         }
-        return $responce;
+        return $response;
     }
 
     public static function getNonLuModels() {
-        $responce = self::getModels();
-        foreach($responce as $key=>$model){
-            if(! $model['extends_lu_model']) {
-                unset($responce[$key]);
+        $response = self::getModels();
+        foreach($response as $key=>$model){
+            if( $model['extends_lu_model']) {
+                unset($response[$key]);
             }
         }
-        return $responce;
+        return $response;
     }
 
     public static function getMetaData($model) {
