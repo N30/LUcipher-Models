@@ -7,7 +7,21 @@
 	"require": {
 		"php": "^8.2",
 		"illuminate/support": "^11.0|^12.0",
+		"illuminate/database": "^11.0|^12.0",
 		"lucipher/unite": "^3.0"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^11.0"
+	},
+	"repositories": [
+		{
+			"type": "path",
+			"url": "../lu_unite",
+			"options": { "symlink": true }
+		}
+	],
+	"scripts": {
+		"test": "phpunit"
 	},
 	"replace": {
 		"n30/lu_models": "self.version",

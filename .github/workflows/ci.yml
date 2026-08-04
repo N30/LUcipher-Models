@@ -1,5 +1,9 @@
 name: CI
 
+# Lint-only in CI: this package requires lucipher/unite, which lives in a private
+# repo (github.com/N30/LUcipher) and is resolved locally via a ../lu_unite path repo.
+# Run the full suite locally with: composer install && composer test
+
 on:
   push:
     branches: [master, main, 2.x]
@@ -18,4 +22,4 @@ jobs:
       - name: PHP syntax check
         run: |
           set -e
-          find src config routes database -name '*.php' -print0 2>/dev/null | xargs -0 -n1 php -l
+          find src config routes database tests -name '*.php' -print0 2>/dev/null | xargs -0 -n1 php -l

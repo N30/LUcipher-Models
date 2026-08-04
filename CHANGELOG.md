@@ -20,5 +20,10 @@
 - `LuModel::getModels()` no longer references an undefined variable when the app has no models.
 - Internal `$responce` typo variables renamed.
 
+### Added
+- `illuminate/database` declared as a real dependency (LuModel extends Eloquent).
+- PHPUnit test suite (`composer test`; run locally — CI is lint-only because the
+  lucipher/unite dependency lives in a private repo, resolved via a `../lu_unite` path repo).
+
 ### Staying on 2.x
 Pin the `v2.0.0` tag or the `2.x` branch. Bug fixes for legacy apps land on `2.x` only.
