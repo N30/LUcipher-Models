@@ -74,8 +74,19 @@ class ResourceController extends ApiResourceController
     {
          
         //if view file exists return view
-        if(view()->exists(Str::plural($this->route_prefix).'.'.$this->action)) { 
+        //sample: users.index
+        if(view()->exists(Str::plural($this->route_prefix).'.'.$this->action)) 
+        { 
             $view= view( Str::plural($this->route_prefix).'.'.$this->action , ['data' => $data]);
+        }
+        //sample: web.users.index
+        elseif(view()->exists($this->controller_type.".".Str::plural($this->route_prefix).'.'.$this->action)) 
+        {
+            $view =  view($this->controller_type.".".Str::plural($this->route_prefix).'.'.$this->action , ['data' => $data]);
+        }
+        //custom
+        elseif(view()->exists($this->model->viewFile($this->action))) {
+            $view = view($this->model->viewFile($this->action),  ['data'=> $data] );
         } else { 
             $view = view($this->model->viewFile($this->action ),  ['data'=> $data] );
         }

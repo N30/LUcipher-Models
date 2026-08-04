@@ -1,8 +1,8 @@
 {
-	"name": "all1/lu_models",
+	"name": "n30/lu_models",
 	"description": "",
 	"type": "library",
-	"version": "1.0",
+	"version": "dev-master",
 	"license": "proprietary",
 	"require": {
        

@@ -121,7 +121,9 @@ class LuModels
             }else {
                 $default_relationships = [];
                 //get all columns ending in id
-                if(!isset($this->controller_data['columns']) && count($this->controller_data['columns'])  ){    
+                if(!isset($this->controller_data['columns']) 
+                && 
+                count($this->controller_data['columns'])  ){    
                     foreach($this->controller_data['columns'] as $k=>$v){
                         if(Str::endsWith($v['Field'], '_id')){
                             $default_relationships[] = Str::beforeLast($v['Field'], '_id');
@@ -486,8 +488,12 @@ class LuModels
 
     public static function authorize($action,$model, $data, $controller_type) {
         
+        if(auth()->check() && 
+        method_exists( auth()->user() , 'is_super_admin')   
+        && auth()->user()->is_super_admin()) {
+            return true;
+        }
         $is_public = \All1\LuModels\Services\LuModels::can_public_access_model_for($model, $action);
-        
         $policy_access = auth()->check() && auth()->user()->can($action, $model, $data, $controller_type);
         // dd("ADASDS",$action);
         if(!$is_public && !$policy_access) {

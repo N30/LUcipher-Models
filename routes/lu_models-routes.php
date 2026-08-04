@@ -23,8 +23,9 @@ Route::middleware(['auth',/***** enforced as REST is just for developers and adm
 }
 if(config('lu::models.enable_api_routes')) {
     if (array_key_exists('auth:sanctum', App::make(\Illuminate\Routing\Router::class)->getMiddleware())) {
-        Route::prefix('api')->middleware('api')->group( ['middleware' => 'auth:sanctum'], function() {
-            
+        Route::prefix('api')
+        ->middleware(['api', 'auth:sanctum'])
+        ->group(function () {
                 Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
         
         });

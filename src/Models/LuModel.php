@@ -175,32 +175,32 @@ class LuModel extends Model
                 foreach(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'] as $action){
                     $routeName='lu::'.$route_type.'.resources';
                     //check if route exists
-                     
+                    if (!\Route::has($routeName)) {
+                        continue;
+                    }
                     $route = route($routeName, ['model'=>$route_group, 'action'=>$action]);
 
-                    if(!\Route::has($routeName)) {
-                        continue;
-                    }else { 
-                        $routes[$route_type][$action] = [
-                            'url'=>$route,
-                            'method'=> match($action){
-                                'index'=>'GET',
-                                'create'=>'GET',
-                                'store'=>'POST',
-                                'show'=>'GET',
-                                'edit'=>'GET',
-                                'update'=>'PUT',
-                                'destroy'=>'DELETE',
-                            },
-                            'dynamic'=> match($action){
-                                'show'=>true,
-                                'edit'=>true,
-                                'update'=>true,
-                                'destroy'=>true,
-                                default=>false
-                            }
-                        ];
-                    }
+                
+                    $routes[$route_type][$action] = [
+                        'url'=>$route,
+                        'method'=> match($action){
+                            'index'=>'GET',
+                            'create'=>'GET',
+                            'store'=>'POST',
+                            'show'=>'GET',
+                            'edit'=>'GET',
+                            'update'=>'PUT',
+                            'destroy'=>'DELETE',
+                        },
+                        'dynamic'=> match($action){
+                            'show'=>true,
+                            'edit'=>true,
+                            'update'=>true,
+                            'destroy'=>true,
+                            default=>false
+                        }
+                    ];
+                    
                 }
             }
 

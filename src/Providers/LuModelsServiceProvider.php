@@ -44,12 +44,12 @@ class LuModelsServiceProvider extends LuUniteServiceProvider
 	public function boot(): void
 	{
 
-        
-    
         $this->lu_addon_provider_boot($this, 'models', [
             'register_views' => true,
             'register_blade_components' => true,
         ]);
+
+        $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php'); // or api.php
            
 
              
