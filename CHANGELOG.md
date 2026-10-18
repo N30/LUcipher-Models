@@ -1,5 +1,26 @@
 # Changelog — lucipher/models
 
+## 3.0.1 — security and correctness fixes (2026-10-18)
+
+### Security
+- Update fails closed: `Updation` tested an undeclared `updation_safety`, so every update wrote every submitted key past `$fillable`; it now reads `update_safety`, and any model that does not set a safety flag to `false` (plain Eloquent models included) writes through `create()`/`update()` and `$fillable` (same default for `creation_safety`; `Revelation` now reads `read_safety`).
+- Routes are method-scoped: `GET` index/create/show/edit, `POST` store, `PUT|PATCH` update, `DELETE` destroy on `/web`, `/rest` and `/api` (3.0.0's `Route::any` let `GET …/destroy/{id}` delete a row past CSRF); unknown path actions no longer route, and the controllers refuse a mismatched method with a 405.
+
+### Fixed
+- `{model}.created` / `{model}.updated` / `{model}.deleted` now fire for create / update / delete as the README documents (3.0.0 fired `{model}.updated` for every action); index and read fire no string event.
+- The app Action override is one class name, `App\LuModels\Actions\{action_folder}\{Action}{Model}`, checked and run (3.0.0 checked that name but instantiated `App\Models\Actions\{Action}{Model}`).
+- The five Verbs share an abstract `Verb` base with one constructor: `$service` is always assigned (delete no longer fatals), every `handle()` returns the service (update returned the model), properties are declared (no PHP 8.2 dynamic-property deprecations).
+- The app Event override is looked up by the model's name, `App\Events\{action_folder}\{Model}{Created|Updated|Deleted|Read|Index}` (3.0.0 used the Verb's name, e.g. `CreationCreated`).
+- Index on an empty table no longer 500s on `$data[0]`; it returns an empty result with the table's columns.
+
+### Upgrade notes
+- The shipped create forms now submit `store` as `POST` (they sent `PUT`); a published copy of `web/create` or `rest/create` that still sends `@method('PUT')` must drop it.
+- The write routes are named `{name}.store`, `{name}.update` and `{name}.destroy` beside the existing GET name (e.g. `lu::web.resources`); `route('lu::web.resources', [...])` still generates every action's URL.
+- A model that relied on the unguarded update path must now opt out explicitly with `public $update_safety = false;`.
+
+### Tests
+- Class-level suite for every fix above (`illuminate/routing`, `illuminate/events` and `illuminate/config` added as dev dependencies; `tests/bootstrap.php` supplies the framework helpers for the test run only).
+
 ## 3.0.0 (2026-08-04)
 
 **Major version. Breaking changes — existing apps should stay on the `2.x` branch / `v2.0.0` tag until ready to upgrade.**

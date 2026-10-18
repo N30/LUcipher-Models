@@ -2,7 +2,7 @@
 	"name": "lucipher/models",
 	"description": "LuCipher Models: generic model-driven CRUD engine for Laravel — one controller family serving web, REST, API and SPA routes from Eloquent model metadata.",
 	"type": "library",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"license": "proprietary",
 	"require": {
 		"php": "^8.2",
