@@ -106,7 +106,10 @@ class LuModel extends Model
     public static function getModels()
     {
 
-        $modelPath = app_path('Models');
+        $modelPath = config('lu::models.models_path') ?: app_path('Models');
+        if (! is_dir($modelPath)) {
+            return [];
+        }
         $models = collect(\File::allFiles($modelPath))
             ->map(fn ($file) => self::getNamespaceFromFile($file).'\\'.pathinfo($file, PATHINFO_FILENAME))
             ->all();
