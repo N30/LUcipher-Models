@@ -5,19 +5,29 @@ namespace All1\LuModels\Tests;
 use All1\LuModels\Providers\LuModelsServiceProvider;
 use App\Models\Post;
 use App\Models\User;
+use Flux\FluxServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Mcp\Server\McpServiceProvider;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
-    /** Boot the installed packages' providers (Livewire, Flux, laravel/mcp) as an application would. */
-    protected $enablesPackageDiscoveries = true;
-
     use RefreshDatabase;
 
+    /**
+     * The package, plus the optional packages it integrates with when they are installed (Livewire for
+     * /spa, Flux for the optional skin, laravel/mcp for the MCP transport). Registered by name rather
+     * than discovered: Testbench's package discovery proved environment-dependent in CI.
+     */
     protected function getPackageProviders($app): array
     {
-        return [LuModelsServiceProvider::class];
+        return array_values(array_filter([
+            LuModelsServiceProvider::class,
+            LivewireServiceProvider::class,
+            FluxServiceProvider::class,
+            McpServiceProvider::class,
+        ], 'class_exists'));
     }
 
     protected function defineEnvironment($app): void
