@@ -46,6 +46,15 @@ return [
         'writes' => 20,
     ],
 
+    // The typed Created / Updated / Deleted events broadcast as lu-models.{action} when enabled: on the
+    // owner's private channel (App.Models.User.{user_id}) when the record has a user_id, else on the
+    // record's channel lu-models.{table}.{key}. `channel` overrides the name; it may use {table}, {key}
+    // and {user_id}. The payload never includes hidden attributes.
+    'broadcast' => [
+        'enabled' => false,
+        'channel' => null,
+    ],
+
     // Every create, update and delete that goes through the package is recorded in lu_models_audit:
     // model, key, action, transport, user, IP and the changed attributes (never $hidden ones).
     // store_values=false keeps only the attribute names. Run `php artisan migrate` after installing;

@@ -7,6 +7,10 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * @deprecated 3.1 A read is not a state change; this event still fires for listeners that expect it and
+ *             goes away in 4.0. It is never broadcast.
+ */
 class Index
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -34,7 +38,6 @@ class Index
      */
     public function broadcastOn(): array
     {
-        // Phase 4 (study §5.10) gives these events real channels; until then nothing is broadcast.
         return [];
     }
 }
