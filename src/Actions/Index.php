@@ -61,7 +61,7 @@ class Index extends Action
 
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
     {
-        $service->controller_index($model);
+        $service->controller_index($model, $data);
 
         $this->dispatchEvent($model, 'Index', IndexEvent::class, $data, $controller_type);
 

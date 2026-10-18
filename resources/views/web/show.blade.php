@@ -4,7 +4,9 @@ $lang = config('lu::models.lang_prefix');
 $writeType = $controller_type === 'spa' ? 'web' : $controller_type;
 ?>
 <x-lu_models::dynamic-layout :layout="$layout">
-    <x-lu_models::ui.toasts />
+    @if ($controller_type !== 'spa')
+        <x-lu_models::ui.toasts />
+    @endif
 
     <div class="lu-models lu-show space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-3">

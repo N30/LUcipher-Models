@@ -5,7 +5,9 @@ $layout = isset($layout) ? 'lu_models::empty-layout' : \All1\LuModels\Support\Ui
 $lang = config('lu::models.lang_prefix');
 ?>
 <x-lu_models::dynamic-layout :layout="$layout">
-    <x-lu_models::ui.toasts />
+    @if ($controller_type !== 'spa')
+        <x-lu_models::ui.toasts />
+    @endif
 
     <div class="lu-models lu-index space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-3">

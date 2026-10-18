@@ -128,11 +128,12 @@ class LuModels
     }
 
     /** The listing: paginated unless the request asks for a flat `limit`. */
-    public function controller_index($model)
+    /** @param  array<string, mixed>  $params  the listing's query grammar: request()->all() over HTTP, the component's state on /spa */
+    public function controller_index($model, array $params = [])
     {
         $this->model = $model;
 
-        return $this->runQuery($model, 'index', null, ! request()->has('limit'));
+        return $this->runQuery($model, 'index', null, ! array_key_exists('limit', $params), $params);
     }
 
     /** One record, by the key the controller already resolved onto $model. */
@@ -165,24 +166,25 @@ class LuModels
      * never a silent probe.
      *
      * @param  (callable(Builder): mixed)|null  $scope
+     * @param  array<string, mixed>  $params  the query grammar as data, so a Livewire component can feed its own state
      */
-    protected function runQuery(Model $model, string $read_action, ?callable $scope, bool $paginate)
+    protected function runQuery(Model $model, string $read_action, ?callable $scope, bool $paginate, array $params = [])
     {
-        $request = request();
+        $in = fn (string $key, mixed $default = null): mixed => $params[$key] ?? $default;
         $visibility = FieldVisibility::for($model);
         $descriptor = Descriptor::for($model);
         $name = class_basename($model);
         $readable = $visibility->readable(array_keys($descriptor->fields), $read_action);
 
         // include (the JSON API spelling) and with (the 3.0.x spelling) are one list: descriptor relationships only
-        $include = array_values(array_unique([...self::listParam($request->input('include')), ...self::listParam($request->input('with'))]));
+        $include = array_values(array_unique([...self::listParam($in('include')), ...self::listParam($in('with'))]));
         foreach ($include as $relation) {
             if (! array_key_exists($relation, $descriptor->relationships)) {
                 abort(400, 'The include '.$relation.' is not a relationship of '.$name.'.');
             }
         }
 
-        $filter = $request->input('filter', []);
+        $filter = $in('filter', []);
         if (! is_array($filter)) {
             abort(400, 'The filter parameter must be an array, e.g. filter[title]=Alpha or filter[id][gte]=10.');
         }
@@ -203,7 +205,7 @@ class LuModels
         }
 
         $sorts = [];
-        foreach (self::listParam($request->input('sort')) as $entry) {
+        foreach (self::listParam($in('sort')) as $entry) {
             $field = ltrim($entry, '-+');
             if (! in_array($field, $readable, true)) {
                 abort(400, 'The sort field '.$field.' is not sortable.');
@@ -211,7 +213,7 @@ class LuModels
             $sorts[$field] = str_starts_with($entry, '-') ? 'desc' : 'asc';
         }
 
-        $fields = self::listParam($request->input('fields'));
+        $fields = self::listParam($in('fields'));
         foreach ($fields as $field) {
             if (! in_array($field, $readable, true)) {
                 abort(400, 'The field '.$field.' cannot be selected.');
@@ -219,11 +221,11 @@ class LuModels
         }
 
         $default_order = strtolower((string) ($descriptor->options['index_default_order'] ?? 'asc'));
-        $order = strtolower((string) $request->input('order', $default_order));
+        $order = strtolower((string) $in('order', $default_order));
         $order = in_array($order, ['asc', 'desc'], true) ? $order : $default_order;
-        $search = $request->input('search');
+        $search = $in('search');
         $search_fields = array_values(array_intersect(
-            (array) $request->input('search_fields', $descriptor->options['default_search_columns'] ?: $readable),
+            (array) $in('search_fields', $descriptor->options['default_search_columns'] ?: $readable),
             $readable,
         ));
 
@@ -262,20 +264,21 @@ class LuModels
         }
 
         if ($paginate) {
-            $per_page = (int) $request->input('per_page', 15);
-            $data = $query->paginate($per_page > 0 && $per_page <= 200 ? $per_page : 15);
+            $per_page = (int) $in('per_page', 15);
+            $page = $in('page');
+            $data = $query->paginate($per_page > 0 && $per_page <= 200 ? $per_page : 15, ['*'], 'page', is_numeric($page) ? (int) $page : null);
             $data->appends(array_filter([
-                'per_page' => $request->input('per_page'),
+                'per_page' => $in('per_page'),
                 'include' => $include ?: null,
                 'filter' => $filter ?: null,
-                'sort' => $request->input('sort'),
-                'fields' => $request->input('fields'),
-                'order' => $request->input('order'),
+                'sort' => $in('sort'),
+                'fields' => $in('fields'),
+                'order' => $in('order'),
                 'search' => $search,
-                'search_fields' => $request->input('search_fields'),
+                'search_fields' => $in('search_fields'),
             ]));
         } else {
-            $limit = (int) $request->input('limit', 0);
+            $limit = (int) $in('limit', 0);
             $data = ($scope === null && $limit > 0 ? $query->limit($limit) : $query)->get();
         }
 
@@ -309,11 +312,11 @@ class LuModels
             'with' => $include ?: null,
             'include' => $include,
             'filter' => $filter,
-            'sort' => $request->input('sort'),
+            'sort' => $in('sort'),
             'fields' => $fields,
-            'order' => $request->input('order'),
-            'limit' => $request->input('limit'),
-            'page' => $request->input('page'),
+            'order' => $in('order'),
+            'limit' => $in('limit'),
+            'page' => $in('page'),
             'search' => $search,
             'search_fields' => $search_fields,
         ];

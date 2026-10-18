@@ -58,6 +58,16 @@
   `Form::fields()`, i.e. the operation's `schema()` (fields, required, length) plus the descriptor's input
   kind and help text, so the form and the API cannot disagree. The toasts component shows what the
   controller flashed and listens for `lu-models:toast` browser events.
+- **The Livewire admin UI.** `/spa/{model}/{action?}/{id?}` resolves the slug and the action once, at
+  the entry point, and mounts one of three components with typed parameters: `Livewire\Index` (live
+  search, sort, include, page size and delete, all in the URL), `Livewire\Form` (create and edit through
+  the same `Writer` as the API, errors by field, a toast and a redirect to the record) and
+  `Livewire\Show`. They render the very blades `/web` renders, with the empty layout (study §2.2), so
+  the server-rendered pages and the live ones cannot drift. The generic `Livewire\Master` is gone.
+- `Support\Writer` is the one write pipeline (inject what the package owns, validate, refuse guarded keys,
+  run or dry-run the operation, one `Result`) behind the API, web, rest and Livewire; `Support\Keys`
+  resolves a plain, encrypted or slug key; the listing query takes its grammar as data
+  (`controller_index($model, $params)`), so a component can feed its own state.
 - **`schema()` and `supports()` on every operation.** `schema($model)` is a JSON Schema 2020-12 subset of
   what the operation accepts (writable fields minus what the package injects for create/update, the key
   for read/delete, the query parameters for index); `supports($model, $transport)` follows exposure.

@@ -4,7 +4,7 @@ use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Http\Controllers\Api\ApiRestController;
 use All1\LuModels\Http\Controllers\Api\OpenApiController;
 use All1\LuModels\Http\Controllers\ResourceController;
-use All1\LuModels\Livewire\Master;
+use All1\LuModels\Http\Controllers\SpaController;
 use All1\LuModels\Providers\LuModelsServiceProvider;
 use All1\LuModels\Routing\ResourceRoutes;
 use Illuminate\Routing\Router;
@@ -61,6 +61,8 @@ if (config('lu::models.enable_spa_routes')) {
     LuModelsServiceProvider::assertLivewireInstalled();
     // Route::middleware(['auth'])->group(function () {
     Route::middleware([...(array) config('lu::models.spa_middleware'), 'throttle:lu-models-spa'])->group(function () {
-        Route::any('spa/{model}/{action?}/{id?}', Master::class)->name('lu::spa.resources');
+        // one GET route; the controller resolves the slug and the action once and mounts the matching
+        // Livewire component with typed parameters (study §6.5). Writes go through Livewire or the web routes.
+        Route::get('spa/{model}/{action?}/{id?}', SpaController::class)->where('action', 'index|create|show|edit')->name('lu::spa.resources');
     });
 }

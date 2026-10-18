@@ -4,17 +4,15 @@ namespace All1\LuModels\Http\Controllers\Api;
 
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Services\LuModels;
-use All1\LuModels\Support\Descriptor;
-use All1\LuModels\Support\FieldVisibility;
+use All1\LuModels\Support\Keys;
 use All1\LuModels\Support\Result;
-use Illuminate\Contracts\Encryption\DecryptException;
+use All1\LuModels\Support\Writer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -173,23 +171,6 @@ class ApiResourceController
     }
 
     /**
-     * The validator for a write: the model's rules for the action plus a rejection of every client
-     * key the model does not allow written (not fillable, guarded, or kept from this action by
-     * $lu_fields). Rejecting beats silently dropping: the caller learns the contract.
-     */
-    protected function validatorFor(array $data, string $action, array $client_keys): \Illuminate\Contracts\Validation\Validator
-    {
-        $rules = $this->model->{$action === 'create' ? 'store_validation_rules' : 'update_validation_rules'} ?? [];
-        $rejected = FieldVisibility::for($this->model)->rejectedWrites($client_keys, $action);
-
-        return Validator::make($data, $rules)->after(function ($validator) use ($rejected) {
-            foreach ($rejected as $key) {
-                $validator->errors()->add($key, 'The '.$key.' field cannot be written.');
-            }
-        });
-    }
-
-    /**
      * v3.0.1: refuse an action reached through the wrong HTTP method (e.g. GET .../destroy/5),
      * and any path segment that is not one of the seven resource actions. The routes are
      * method-scoped already (All1\LuModels\Routing\ResourceRoutes); this keeps an app that
@@ -202,56 +183,10 @@ class ApiResourceController
         }
     }
 
-    /**
-     * The record $id names. An encrypted key always works; a plain key or a slug works for a signed-in
-     * caller (the policy decides what they may reach) and for a guest only where the model opts in
-     * ($allow_public_access_by_id, $allow_public_access_by_slug, or $allow_any_unencrypted_access for
-     * both). 3.0.x refused plain keys for everyone unless the model opted in, which kept the shipped
-     * UI's own links from reaching the pages they pointed at. Null when no record matches.
-     */
+    /** The record $id names (Support\Keys): encrypted, plain or slug; guests only where the model opts in. */
     protected function findRecord($id, bool $guestOptIns = false): ?Model
     {
-        [$kind, $key] = $this->resolveKey($id);
-
-        if ($guestOptIns && $kind !== 'encrypted' && ! auth()->check() && ! $this->guestMayUse($kind)) {
-            abort(403, 'Sign in, or use the encrypted id, to reach this record through this URL.');
-        }
-
-        return $kind === 'slug'
-            ? $this->model->newQuery()->where('slug', $key)->first()
-            : $this->model->newQuery()->find($key);
-    }
-
-    /**
-     * What kind of key the request sent, and the key itself: a number is the plain key, a value
-     * that decrypts is an encrypted key, anything else is a slug when the model has one.
-     *
-     * @return array{0: string, 1: mixed}
-     */
-    protected function resolveKey($id): array
-    {
-        if ($id === null || is_numeric($id)) {
-            return ['plain', $id];
-        }
-
-        try {
-            return ['encrypted', decrypt($id)];
-        } catch (DecryptException) {
-            $has_slug = Descriptor::for($this->model)->field('slug') !== null;
-
-            return [$has_slug ? 'slug' : 'plain', $id];
-        }
-    }
-
-    /** Whether a guest may name a record by this kind of key: the model's own public opt-ins. */
-    protected function guestMayUse(string $kind): bool
-    {
-        $model = $this->model;
-        if (($model->allow_any_unencrypted_access ?? false) || ($model->allow_any_unencrypred_access ?? false)) {
-            return true;
-        }
-
-        return (bool) ($kind === 'slug' ? ($model->allow_public_access_by_slug ?? false) : ($model->allow_public_access_by_id ?? false));
+        return Keys::find($this->model, $id, $guestOptIns);
     }
 
     /**
@@ -261,14 +196,7 @@ class ApiResourceController
      */
     public static function recordOf($result, $fallback = null)
     {
-        if ($result instanceof Model) {
-            return $result;
-        }
-        if (is_object($result) && isset($result->model) && $result->model instanceof Model) {
-            return $result->model;
-        }
-
-        return $fallback;
+        return Writer::recordOf($result, $fallback);
     }
 
     public function create()
@@ -323,112 +251,30 @@ class ApiResourceController
 
     public function store($data = null)
     {
+        $data ??= request()->except(self::NOT_INPUT);
 
-        if (! isset($data)) {
-            $data = request()->except(self::NOT_INPUT);
-        }
-        $client_keys = array_keys($data);
-
-        foreach ($this->columns as $k => $v) {
-            if ($v['Key'] == 'PRI' && $v['Extra'] == 'auto_increment') {
-                unset($this->columns[$k]);
-            }
-            if ($v['Field'] == 'ip_address') {
-                $data = array_merge($data, ['ip_address' => request()->ip()]);
-            } elseif ($v['Field'] == 'user_id') {
-                $data = array_merge($data, ['user_id' => auth()->id()]);
-            } elseif ($v['Field'] == 'user_agent') {
-                $data = array_merge($data, ['user_agent' => request()->header('User-Agent')]);
-            }
-        }
-        // opinionated type hinting LuModel rule:
-        // foreach session starting with {model}_ that exists in db table but not in submissions add to attributesafterAll(function () {
-        foreach ((session()->all()) as $k => $v) {
-            if (Str::startsWith($k, strtolower($this->model_name).'_') && ! array_key_exists($k, $data)) {
-                // check it exists in db columns
-                $exists = false;
-                $pure_name = Str::after($k, strtolower($this->model_name).'_');
-                foreach ($this->columns as $col) {
-                    if ($col['Field'] == $pure_name) {
-                        $data = array_merge($data, [$pure_name => $v]);
-                    }
-                }
-            }
-        }
-
-        // see if model has slug by checking if it has method getSlugOptions
-        if (method_exists($this->model, 'getSlugOptions')) {
-            $slug_col = $this->model->getSlugOptions()->generateSlugFrom[0];
-            $slug = Str::slug(request()->$slug_col);
-            $data = array_merge($data, ['slug' => $slug]);
-        }
-
-        $validator = $this->validatorFor($data, 'create', $client_keys);
-
-        if ($validator->fails()) {
-            return Result::invalid($validator);
-        }
-        if ($this->dryRun()) {
-            return LuModels::wouldDo('create', $this->service, $this->model, $data, $this->controller_type);
-        }
-
-        // dd($validated);
-        // pass data and controller_type web, api, spa, etc.... (for record keeping)
-        $data = LuModels::fromData('create', $this->service, $this->model, $data, $this->controller_type);
-        // the record the write produced (an app override may return the model itself)
-        $record = self::recordOf($data);
-
-        return Result::ok('We have received and saved your information successfully.', $record, $record, $record ? encrypt($record->getKey()) : null);
+        return Writer::create($this->model, $data, $this->controller_type, $this->dryRun());
     }
 
     public function update($id, $data = null)
     {
-        if (! isset($data)) {
-            $data = request()->except(self::NOT_INPUT);
-        }
+        $data ??= request()->except(self::NOT_INPUT);
 
-        $obj = $this->findRecord($id);
-        if (! $obj) {
+        $record = $this->findRecord($id);
+        if (! $record) {
             return Result::notFound();
         }
 
-        $validator = $this->validatorFor($data, 'update', array_keys($data));
-        if ($validator->fails()) {
-            return Result::invalid($validator);
-        }
-        if ($this->dryRun()) {
-            return LuModels::wouldDo('update', $this->service, $obj, $data, $this->controller_type);
-        }
-
-        $data = LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type);
-
-        $record = self::recordOf($data, $obj);
-
-        return Result::ok('Record updated', $record, $record, encrypt($record->getKey()));
+        return Writer::update($record, $data, $this->controller_type, $this->dryRun());
     }
 
     public function destroy($id)
     {
-        // check if auth user owns the record
-        // if not abort
-        // if yes delete
-        $obj = $this->findRecord($id);
-        if (! $obj) {
+        $record = $this->findRecord($id);
+        if (! $record) {
             return Result::notFound();
         }
-        // check if auth user owns the record
-        // if not abort
-        // if yes delete
 
-        if ($this->dryRun()) {
-            return LuModels::wouldDo('delete', $this->service, $obj, [], $this->controller_type);
-        }
-
-        $data = LuModels::fromData('delete', $this->service, $obj, request()->except(self::NOT_INPUT), $this->controller_type);
-
-        $record = self::recordOf($data, $obj);
-
-        return Result::ok('Record deleted', $record, $record);
-
+        return Writer::delete($record, $this->controller_type, $this->dryRun());
     }
 }

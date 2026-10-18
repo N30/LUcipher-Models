@@ -147,7 +147,7 @@ class VerbsTest extends UnitTestCase
         {
             public array $called = [];
 
-            public function controller_index($model)
+            public function controller_index($model, array $params = [])
             {
                 $this->called[] = 'index';
 

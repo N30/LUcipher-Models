@@ -3,7 +3,7 @@
     are required, how long) with the descriptor's input kind and help text. On /spa the wire: attributes
     bind the same fields to the Livewire form; unhydrated it is a plain HTML POST the web controller handles.
 --}}
-@php $fields = \All1\LuModels\Support\Form::fields($model, $action, old()); @endphp
+@php $fields = \All1\LuModels\Support\Form::fields($model, $action, old() ?? []); @endphp
 <form action="{{ $submit }}" method="POST" class="lu-form space-y-4" wire:submit="save">
     @csrf
     @if ($method !== 'POST')
