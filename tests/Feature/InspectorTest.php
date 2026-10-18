@@ -28,7 +28,7 @@ class InspectorTest extends TestCase
         [$code, $out] = $this->inspect();
 
         $this->assertSame(0, $code);
-        $this->assertStringContainsString('3 model(s)', $out);
+        $this->assertStringContainsString('4 model(s)', $out);
         $this->assertStringContainsString(Post::class, $out);
         $this->assertStringContainsString('web, rest, api, spa', $out);
         $this->assertStringContainsString('App\Policies\PostPolicy', $out);

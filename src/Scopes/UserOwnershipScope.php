@@ -6,36 +6,27 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
 
+/**
+ * Only the signed-in user's rows. Console commands are not scoped. A guest sees no rows at all:
+ * 3.0.x built `where user_id = null` for a guest (and had a live dd() on one branch), which is the
+ * wrong kind of empty — this one is explicit.
+ */
 class UserOwnershipScope implements Scope
 {
-    /**
-     * Apply the scope to a given Eloquent query builder.
-     */
     public function apply(Builder $builder, Model $model): void
     {
-
-        // get builder query from model
-        // $model_table = $builder->query;
-
-        // cosole and artisan commands should not be affected
-        if (auth()->check()) {
-            $user_id = auth()->id();
-        } elseif (env('APP_ENV') == 'local' && strpos(url()->current(), '/api/') !== false) {
-            dd(strpos(url()->current(), 'api'));
-            $user_id = 1;
-        }
-
-        if (app()->runningInConsole()) {
+        if (app()->runningInConsole() && ! app()->runningUnitTests()) {
             return;
         }
-        if (isset($model->table)) {
-            $builder->where($model->table.'.user_id', $user_id);
 
-            return;
-        } else {
-            $builder->where($model->getTable().'.user_id', $user_id);
+        $column = $model->getTable().'.'.(method_exists($model, 'ownerKeyName') ? $model->ownerKeyName() : 'user_id');
+
+        if (! auth()->check()) {
+            $builder->whereRaw('1 = 0');
 
             return;
         }
+
+        $builder->where($column, auth()->id());
     }
 }

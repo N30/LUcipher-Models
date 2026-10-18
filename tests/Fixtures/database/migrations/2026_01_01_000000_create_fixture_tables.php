@@ -26,6 +26,13 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::create('memos', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('body');
+            $table->timestamps();
+        });
+
         Schema::create('notes', function (Blueprint $table) {
             $table->id();
             $table->string('body');
@@ -35,6 +42,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::dropIfExists('memos');
         Schema::dropIfExists('notes');
         Schema::dropIfExists('posts');
         Schema::dropIfExists('users');

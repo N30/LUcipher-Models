@@ -2,56 +2,23 @@
 
 namespace All1\LuModels\Observers;
 
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * Stamps the signed-in user on every record it creates. One observer watches every owned model for
+ * its user_id, rather than one observer per model (the author's inversion, study §3).
+ */
 class UserOwnershipObserver
 {
-    public function creating($model)
+    public function creating(Model $model): void
     {
-        if ((auth()->user())) {
-            $model->user_id = auth()->user()->id;
-        } elseif (env('APP_ENV') == 'local' && strpos($_SERVER['REQUEST_URI'], 'api/') === 1) {  // as it starts with /api position is 1
-            $model->user_id = 1;
+        if (auth()->check()) {
+            $model->setAttribute($this->ownerKey($model), auth()->id());
         }
-
-        return true;
     }
 
-    /**
-     * Handle the  "created" event.
-     */
-    public function created($model): void
+    protected function ownerKey(Model $model): string
     {
-        //
-    }
-
-    /**
-     * Handle the  "updated" event.
-     */
-    public function updated($model): void
-    {
-        //
-    }
-
-    /**
-     * Handle the  "deleted" event.
-     */
-    public function deleted($model): void
-    {
-        //
-    }
-
-    /**
-     * Handle the  "restored" event.
-     */
-    public function restored($model): void
-    {
-        //
-    }
-
-    /**
-     * Handle the  "force deleted" event.
-     */
-    public function forceDeleted($model): void
-    {
-        //
+        return method_exists($model, 'ownerKeyName') ? $model->ownerKeyName() : 'user_id';
     }
 }
