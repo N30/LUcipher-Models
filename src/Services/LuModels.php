@@ -216,8 +216,24 @@ class LuModels
             $data =  $q->get();
         }
 
-        
-        $db_columns= array_keys($data[0]->getAttributes());
+        //v3.0.1: an empty table used to 500 here ($data[0] on an empty result).
+        $first = $data->first();
+        if($first === null) {
+            $this->db_columns = $this->model->getConnection()->getSchemaBuilder()->getColumnListing($this->model->getTable());
+            $this->filters=[
+                'with' =>$with,
+                'sort' =>$sort,
+                'order' =>$order,
+                'limit' =>$limit,
+                'page' =>$page,
+                'search' =>$search,
+                'search_fields' =>$search_fields,
+            ];
+            $this->data = $data;
+            return $data;
+        }
+
+        $db_columns= array_keys($first->getAttributes());
          
         foreach($data as $d) {
             if(isset($this->model->hidden_columns)){
@@ -227,7 +243,7 @@ class LuModels
             }
         } 
         
-        foreach($data[0]->getRelations() as $k=>$rel) {
+        foreach($first->getRelations() as $k=>$rel) {
             if(is_iterable($rel) &&  count($rel)>0){  
                 foreach($rel[0]->getAttributes() as $c=>$v) {
                     $db_columns[$k.'.'.$c] = $k.'.'.$c;
@@ -437,15 +453,24 @@ class LuModels
  
         //turn model to the child model it always was
          
-        $action_folder = $model->action_folder ?? 'CRUD';
-        // Fire the Actions event to handle state change
-        if(!class_exists('\App\LuModels\Actions\\'.$action_folder.'\\'.ucfirst($action).ucfirst(class_basename($model)))) {
-            $action = "\All1\LuModels\Actions\\".ucfirst($action);
-        }else { //run that action
-            $action = '\App\Models\Actions\\'.ucfirst($action).ucfirst(class_basename($model));
-            
-        }
+        $action = self::actionClass($action, $model);
         return $action::run($service,$model, $data, $controller_type);
+    }
+
+    /**
+     * The Action class that runs $action for $model: the app's override
+     * App\LuModels\Actions\{action_folder}\{Action}{Model} (e.g. App\LuModels\Actions\CRUD\CreateUser)
+     * when it exists, else the package default All1\LuModels\Actions\{Action}.
+     *
+     * v3.0.1: the name is built once. 3.0.0 checked App\LuModels\Actions\{folder}\… but then
+     * instantiated App\Models\Actions\… (different root, folder dropped), so an override only ran
+     * if the app defined both classes.
+     */
+    public static function actionClass($action, $model) {
+        $action_folder = $model->action_folder ?? 'CRUD';
+        $override = '\App\LuModels\Actions\\'.$action_folder.'\\'.ucfirst($action).ucfirst(class_basename($model));
+
+        return class_exists($override) ? $override : "\All1\LuModels\Actions\\".ucfirst($action);
     }
  
 
@@ -505,19 +530,43 @@ class LuModels
 
 
     public function fireVerbs($action, $service,$model,$data, $controller_type) {
-        
+        $verb_name = $action;
         // Fire the Verbs event to handle state change
         if(class_exists('\App\Models\Verbs\\'.$model->action_folder.'\\'.ucfirst(class_basename($model)).\Str::studly($action) ) ) {
             $action = '\App\Models\Verbs\\'.$model->action_folder.'\\'.ucfirst(class_basename($model)).\Str::studly($action);
         }else { //run that action
             $action = "\All1\LuModels\Verbs\\".\Str::studly($action); 
         } 
-        $event = new $action($service, $model, $data , $controller_type);
+        $verb = new $action($service, $model, $data , $controller_type);
         
-        $service =    $event->handle();
-        
-        event(strtolower(class_basename($model)).'.updated', ['model'=>$model,'data' => $data, 'controller_type'=>$controller_type]); //<-- THIS IS THE EVENT YOU WANT TO LISTEN FOR IF USING LARAVEL BUILT-IN EVENTS
+        $service =    $verb->handle();
+
+        //v3.0.1: fire the action's own name. 3.0.0 fired {model}.updated for every action
+        //(create, read, index and delete included), so {model}.created / {model}.deleted never fired.
+        //Only the three state changes fire, as README documents; reads and indexes do not.
+        $event_name = self::stringEventName($verb_name, $model);
+        if($event_name !== null) {
+            $payload_model = (is_object($service) && isset($service->model) && $service->model instanceof \Illuminate\Database\Eloquent\Model) ? $service->model : $model;
+            event($event_name, ['model'=>$payload_model,'data' => $data, 'controller_type'=>$controller_type]); //<-- THIS IS THE EVENT YOU WANT TO LISTEN FOR IF USING LARAVEL BUILT-IN EVENTS
+        }
         
         return $service;
+    }
+
+    /** Verb (or action) => the past tense used in the {model}.{past} string event. */
+    public const STRING_EVENTS = [
+        'creation' => 'created', 'create' => 'created', 'store' => 'created',
+        'updation' => 'updated', 'update' => 'updated',
+        'deletion' => 'deleted', 'delete' => 'deleted', 'destroy' => 'deleted',
+    ];
+
+    /**
+     * The Laravel string event a verb fires, e.g. "user.created" for Creation on a User model;
+     * null for the read-only verbs (Revelation, Annexation), which fire none.
+     */
+    public static function stringEventName($verb, $model) {
+        $past = self::STRING_EVENTS[strtolower(class_basename((string) $verb))] ?? null;
+
+        return $past === null ? null : strtolower(class_basename($model)).'.'.$past;
     }
 }
