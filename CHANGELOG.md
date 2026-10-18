@@ -3,7 +3,7 @@
 ## 3.0.1 — security and correctness fixes (2026-10-18)
 
 ### Security
-- Update fails closed: `Updation` tested an undeclared `updation_safety`, so every update wrote every submitted key past `$fillable`; it now reads `update_safety`, and any model that does not set a safety flag to `false` (plain Eloquent models included) writes through `create()`/`update()` and `$fillable` (same default for `creation_safety`; `Revelation` now reads `read_safety`).
+- Update fails closed: `Updation` tested an undeclared `updation_safety`, so every update wrote every submitted key past `$fillable`; it now reads `update_safety`, and any model that does not set a safety flag to `false` (plain Eloquent models included) writes through `create()`/`update()` and `$fillable` (same default for `creation_safety`). `Revelation` no longer tests the misspelled `revelation_safety`; `read_safety` and `delete_safety` are declared but reserved — nothing reads them yet.
 - Routes are method-scoped: `GET` index/create/show/edit, `POST` store, `PUT|PATCH` update, `DELETE` destroy on `/web`, `/rest` and `/api` (3.0.0's `Route::any` let `GET …/destroy/{id}` delete a row past CSRF); unknown path actions no longer route, and the controllers refuse a mismatched method with a 405.
 
 ### Fixed
