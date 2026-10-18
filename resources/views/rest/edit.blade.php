@@ -22,7 +22,7 @@
 
                     @endphp
                     @if (!in_array($c['Field'], ['id', 'created_at', 'updated_at', 'user_id', 'slug']))
-                        @if (auth()->user()->isAdmin() || !in_array($key, $adminOnly = ['user_id']))
+                        @if (\All1\LuModels\Services\LuModels::isSuperAdmin() || !in_array($key, $adminOnly = ['user_id']))
                             <div class="p-2">
                                 @if ($c['required'])
                                     <span class="text-red-500 absolute -mt-1 -ml-2">*</span>

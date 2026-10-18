@@ -1,5 +1,9 @@
 @extends($layout)
 
+@section('header')
+    {{ $header ?? '' }}
+@endsection
+
 @section('content')
-    {{ $slot }}  <!-- Content passed to the component -->
+    {{ $content ?? $slot }}
 @endsection

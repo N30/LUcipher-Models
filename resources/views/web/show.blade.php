@@ -69,5 +69,6 @@
                 </a>
             </div>
         </div>
+    </x-slot>
 
 </x-lu_models::dynamic-layout>

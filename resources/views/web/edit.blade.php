@@ -23,7 +23,7 @@
                             $label = str_replace('_', ' ', ucfirst($c['Field']));
                         @endphp
                         @if (!in_array($c['Field'], ['id', 'created_at', 'updated_at', 'slug']))
-                            @if (auth()->user()->isAdmin() || !in_array($c['Field'], ['user_id']))
+                            @if (\All1\LuModels\Services\LuModels::isSuperAdmin() || !in_array($c['Field'], ['user_id']))
                                 <div class="p-4 border rounded-lg bg-gray-50">
                                     <label class="block text-zinc-700 font-semibold">{{ $label }}</label>
                                     @if (strpos($c['Field'], 'photo') !== false)
@@ -72,5 +72,6 @@
                 </div>
             </form>
         </div>
+    </x-slot>
 
 </x-lu_models::dynamic-layout>
