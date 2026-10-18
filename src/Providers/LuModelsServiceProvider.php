@@ -2,6 +2,7 @@
 
 namespace All1\LuModels\Providers;
 
+use All1\LuModels\Console\LuModelsCommand;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Exposure;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -55,6 +56,10 @@ class LuModelsServiceProvider extends ServiceProvider
         ], 'lu-models-migrations');
 
         $this->registerRateLimiters();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([LuModelsCommand::class]);
+        }
 
         $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php');
     }
