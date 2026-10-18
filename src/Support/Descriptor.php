@@ -5,7 +5,6 @@ namespace All1\LuModels\Support;
 use All1\LuModels\Actions\Action;
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Services\LuModels;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -144,7 +143,7 @@ final class Descriptor implements Arrayable
                 'source' => $app ? 'app' : 'package',
             ];
         }
-        $viewFolder = app() instanceof Application ? LuModel::viewFolderFor($instance) : 'lu_models::web';
+        $viewFolder = app()->bound('path.resources') ? LuModel::viewFolderFor($instance) : 'lu_models::web';
         $overrides['views'] = ['class' => $viewFolder, 'source' => $viewFolder === 'lu_models::web' ? 'package' : 'app'];
         $overrides['policy'] = ['class' => $policy ? get_class($policy) : '', 'source' => $policy ? 'app' : 'missing'];
 
