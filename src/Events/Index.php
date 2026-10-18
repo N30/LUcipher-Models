@@ -4,18 +4,19 @@ namespace All1\LuModels\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 class Index
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
+
     public $model;
+
     public $data;
+
     public $controller_type;
+
     /**
      * Create a new event instance.
      */
@@ -29,10 +30,7 @@ class Index
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
-    public function broadcastOn(): array
-    {
-
-    }
+    public function broadcastOn(): array {}
 }

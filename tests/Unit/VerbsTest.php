@@ -17,6 +17,7 @@ use All1\LuModels\Verbs\Deletion;
 use All1\LuModels\Verbs\Revelation;
 use All1\LuModels\Verbs\Updation;
 use All1\LuModels\Verbs\Verb;
+use App\Events\CRUD\GadgetCreated;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 class VerbsTest extends TestCase
@@ -142,7 +143,8 @@ class VerbsTest extends TestCase
 
     public function test_index_and_read_return_the_service(): void
     {
-        $service = new class extends LuModels {
+        $service = new class extends LuModels
+        {
             public array $called = [];
 
             public function controller_index($model)
@@ -177,7 +179,7 @@ class VerbsTest extends TestCase
         (new Creation(new LuModels, new Gadget, ['name' => 'G'], 'web'))->handle();
 
         $fired = array_map('get_class', $this->firedObjectEvents);
-        $this->assertContains(\App\Events\CRUD\GadgetCreated::class, $fired);
+        $this->assertContains(GadgetCreated::class, $fired);
         $this->assertNotContains(Created::class, $fired);
     }
 

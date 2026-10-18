@@ -16,9 +16,7 @@ namespace {
 
 namespace Thunk\Verbs {
     if (! class_exists(Event::class)) {
-        abstract class Event
-        {
-        }
+        abstract class Event {}
     }
 }
 
@@ -36,30 +34,28 @@ namespace Lorisleiva\Actions\Concerns {
 
 namespace Illuminate\Foundation\Events {
     if (! trait_exists(Dispatchable::class)) {
-        trait Dispatchable
-        {
-        }
+        trait Dispatchable {}
     }
 }
 
 namespace Illuminate\Queue {
     if (! trait_exists(SerializesModels::class)) {
-        trait SerializesModels
-        {
-        }
+        trait SerializesModels {}
     }
 }
 
 namespace Illuminate\Broadcasting {
     if (! trait_exists(InteractsWithSockets::class)) {
-        trait InteractsWithSockets
-        {
-        }
+        trait InteractsWithSockets {}
     }
 }
 
 namespace {
     use Illuminate\Container\Container;
+    use Illuminate\Support\Facades\App;
+    use Illuminate\Support\Facades\Log;
+    use Illuminate\Support\Facades\Route;
+    use Illuminate\Support\Str;
     use Symfony\Component\HttpKernel\Exception\HttpException;
     use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -139,10 +135,10 @@ namespace {
     }
 
     foreach ([
-        'Str' => \Illuminate\Support\Str::class,
-        'Route' => \Illuminate\Support\Facades\Route::class,
-        'App' => \Illuminate\Support\Facades\App::class,
-        'Log' => \Illuminate\Support\Facades\Log::class,
+        'Str' => Str::class,
+        'Route' => Route::class,
+        'App' => App::class,
+        'Log' => Log::class,
     ] as $alias => $class) {
         if (! class_exists($alias, false)) {
             class_alias($class, $alias);

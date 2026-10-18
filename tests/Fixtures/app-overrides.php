@@ -22,8 +22,6 @@ namespace App\LuModels\Actions\CRUD {
 namespace App\Events\CRUD {
     class GadgetCreated
     {
-        public function __construct(public $model, public $data, public $controller_type)
-        {
-        }
+        public function __construct(public $model, public $data, public $controller_type) {}
     }
 }

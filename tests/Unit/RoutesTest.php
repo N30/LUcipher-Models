@@ -8,8 +8,10 @@ use All1\LuModels\Http\Controllers\ResourceController;
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Tests\TestCase;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Routing\UrlGenerator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -28,7 +30,8 @@ class RoutesTest extends TestCase
             'allow_unauthenticated_api' => $allowUnauthenticatedApi,
             'web_middleware' => ['web', 'auth'],
         ]]);
-        $app->instance('log', new class {
+        $app->instance('log', new class
+        {
             public array $warnings = [];
 
             public function warning($message): void
@@ -48,7 +51,7 @@ class RoutesTest extends TestCase
         $this->router->getRoutes()->refreshNameLookups();
     }
 
-    private function match(string $method, string $uri): \Illuminate\Routing\Route
+    private function match(string $method, string $uri): Route
     {
         return $this->router->getRoutes()->match(Request::create($uri, $method));
     }
@@ -62,7 +65,7 @@ class RoutesTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('transports')]
+    #[DataProvider('transports')]
     public function test_get_cannot_reach_destroy_store_or_update(string $prefix): void
     {
         $this->loadRoutes();
@@ -77,7 +80,7 @@ class RoutesTest extends TestCase
         }
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('transports')]
+    #[DataProvider('transports')]
     public function test_each_action_is_reached_only_by_its_method(string $prefix, string $name, string $controller): void
     {
         $this->loadRoutes();
@@ -110,7 +113,7 @@ class RoutesTest extends TestCase
         }
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('transports')]
+    #[DataProvider('transports')]
     public function test_unknown_actions_are_not_routable(string $prefix): void
     {
         $this->loadRoutes();

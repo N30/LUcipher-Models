@@ -55,7 +55,8 @@ class ControllerWriteTest extends TestCase
 
         $this->session = new Store('test', new ArraySessionHandler(10));
         $app->instance('session', $this->session);
-        $app->instance('auth', new class {
+        $app->instance('auth', new class
+        {
             public function check(): bool
             {
                 return false;

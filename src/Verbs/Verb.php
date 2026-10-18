@@ -2,6 +2,8 @@
 
 namespace All1\LuModels\Verbs;
 
+use All1\LuModels\Services\LuModels;
+use Illuminate\Database\Eloquent\Model;
 use Thunk\Verbs\Event;
 
 /**
@@ -15,10 +17,10 @@ use Thunk\Verbs\Event;
  */
 abstract class Verb extends Event
 {
-    /** @var \All1\LuModels\Services\LuModels */
+    /** @var LuModels */
     public $service;
 
-    /** @var \Illuminate\Database\Eloquent\Model */
+    /** @var Model */
     public $model;
 
     public $data;

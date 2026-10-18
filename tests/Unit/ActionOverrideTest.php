@@ -7,6 +7,7 @@ use All1\LuModels\Services\LuModels;
 use All1\LuModels\Tests\Fixtures\Gadget;
 use All1\LuModels\Tests\Fixtures\Widget;
 use All1\LuModels\Tests\TestCase;
+use App\LuModels\Actions\CRUD\CreateGadget;
 
 /** §5.2 — the Action override is one class name, checked and run. */
 class ActionOverrideTest extends TestCase
@@ -16,7 +17,7 @@ class ActionOverrideTest extends TestCase
         parent::setUp();
         $this->bootContainer();
         require_once __DIR__.'/../Fixtures/app-overrides.php';
-        \App\LuModels\Actions\CRUD\CreateGadget::$calls = [];
+        CreateGadget::$calls = [];
     }
 
     public function test_without_an_override_the_package_action_is_used(): void
@@ -34,7 +35,7 @@ class ActionOverrideTest extends TestCase
         $result = LuModels::fromData('create', $service, $model, ['name' => 'G'], 'api');
 
         $this->assertSame($service, $result);
-        $this->assertCount(1, \App\LuModels\Actions\CRUD\CreateGadget::$calls);
-        $this->assertSame([$model, ['name' => 'G'], 'api'], \App\LuModels\Actions\CRUD\CreateGadget::$calls[0]);
+        $this->assertCount(1, CreateGadget::$calls);
+        $this->assertSame([$model, ['name' => 'G'], 'api'], CreateGadget::$calls[0]);
     }
 }
