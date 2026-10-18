@@ -4,11 +4,16 @@ namespace All1\LuModels\Http\Controllers\Api;
 
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Descriptor;
 use All1\LuModels\Support\FieldVisibility;
 use All1\LuModels\Support\Result;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,6 +54,9 @@ class ApiResourceController
     */
 
     public $force_model;
+
+    /** Request keys that are never model input: the CSRF token, the method spoof and the dry-run switch. */
+    public const NOT_INPUT = ['_token', '_method', 'dry_run'];
 
     /** spl_object_id() of the request this instance was initialized for; another request re-initializes. */
     protected ?int $initializedForRequest = null;
@@ -95,9 +103,9 @@ class ApiResourceController
     /**
      * Display a listing of the resource.
      */
-    public function __invoke(Request $request, $model = null, $action = null, $id = null)
+    public function __invoke(Request $request)
     {
-        return $this->toResponse($this->runAction($request, $id));
+        return $this->toResponse($this->runAction($request, $request->route('id')));
     }
 
     /** Guard the HTTP method, run the action and hand back its raw result: the data for reads, an array for writes. */
@@ -110,7 +118,8 @@ class ApiResourceController
 
     /**
      * The API transport's answer: a Result as JSON with its status (422 with errors by field, 404
-     * for a missing record, 200 otherwise); a read's data as JSON 200.
+     * for a missing record, 200 otherwise); a read in one envelope: `{data, meta, links}` for a page,
+     * `{data, meta: {count}}` for a flat list, `{data}` for one record.
      */
     protected function toResponse($result)
     {
@@ -122,7 +131,45 @@ class ApiResourceController
             return $result;
         }
 
-        return new JsonResponse($result, 200);
+        if ($result instanceof Paginator) {
+            $total = $result instanceof LengthAwarePaginator;
+
+            return new JsonResponse([
+                'data' => $result->items(),
+                'meta' => [
+                    'current_page' => $result->currentPage(),
+                    'from' => $result->firstItem(),
+                    'to' => $result->lastItem(),
+                    'per_page' => $result->perPage(),
+                    'last_page' => $total ? $result->lastPage() : null,
+                    'total' => $total ? $result->total() : null,
+                    'path' => $result->path(),
+                ],
+                'links' => [
+                    'first' => $result->url(1),
+                    'last' => $total ? $result->url($result->lastPage()) : null,
+                    'prev' => $result->previousPageUrl(),
+                    'next' => $result->nextPageUrl(),
+                ],
+            ], 200);
+        }
+
+        if ($result instanceof Collection) {
+            return new JsonResponse(['data' => $result->values(), 'meta' => ['count' => $result->count()]], 200);
+        }
+
+        return new JsonResponse(['data' => $result], 200);
+    }
+
+    /** Whether this transport honours `dry_run`: the API does; a browser form has nowhere to show a conditional. */
+    protected function supportsDryRun(): bool
+    {
+        return true;
+    }
+
+    protected function dryRun(): bool
+    {
+        return $this->supportsDryRun() && request()->boolean('dry_run');
     }
 
     /**
@@ -153,6 +200,58 @@ class ApiResourceController
         if (! ResourceRoutes::allows($request->method(), $this->action)) {
             abort(405, 'The '.$request->method().' method is not allowed for the '.$this->action.' action.');
         }
+    }
+
+    /**
+     * The record $id names. An encrypted key always works; a plain key or a slug works for a signed-in
+     * caller (the policy decides what they may reach) and for a guest only where the model opts in
+     * ($allow_public_access_by_id, $allow_public_access_by_slug, or $allow_any_unencrypted_access for
+     * both). 3.0.x refused plain keys for everyone unless the model opted in, which kept the shipped
+     * UI's own links from reaching the pages they pointed at. Null when no record matches.
+     */
+    protected function findRecord($id, bool $guestOptIns = false): ?Model
+    {
+        [$kind, $key] = $this->resolveKey($id);
+
+        if ($guestOptIns && $kind !== 'encrypted' && ! auth()->check() && ! $this->guestMayUse($kind)) {
+            abort(403, 'Sign in, or use the encrypted id, to reach this record through this URL.');
+        }
+
+        return $kind === 'slug'
+            ? $this->model->newQuery()->where('slug', $key)->first()
+            : $this->model->newQuery()->find($key);
+    }
+
+    /**
+     * What kind of key the request sent, and the key itself: a number is the plain key, a value
+     * that decrypts is an encrypted key, anything else is a slug when the model has one.
+     *
+     * @return array{0: string, 1: mixed}
+     */
+    protected function resolveKey($id): array
+    {
+        if ($id === null || is_numeric($id)) {
+            return ['plain', $id];
+        }
+
+        try {
+            return ['encrypted', decrypt($id)];
+        } catch (DecryptException) {
+            $has_slug = Descriptor::for($this->model)->field('slug') !== null;
+
+            return [$has_slug ? 'slug' : 'plain', $id];
+        }
+    }
+
+    /** Whether a guest may name a record by this kind of key: the model's own public opt-ins. */
+    protected function guestMayUse(string $kind): bool
+    {
+        $model = $this->model;
+        if (($model->allow_any_unencrypted_access ?? false) || ($model->allow_any_unencrypred_access ?? false)) {
+            return true;
+        }
+
+        return (bool) ($kind === 'slug' ? ($model->allow_public_access_by_slug ?? false) : ($model->allow_public_access_by_id ?? false));
     }
 
     /**
@@ -195,34 +294,7 @@ class ApiResourceController
 
     public function show($id)
     {
-        // if id is in encrypted format decrypt
-        if (strlen($id) > 20 && ! is_numeric($id)) {
-            $id = decrypt($id);
-            $passed_id_type = 'encrypted';
-        } elseif (is_numeric($id)) {
-            $id = (int) $id;
-            $passed_id_type = 'plain';
-            if (! auth()->check() && $this->model->allow_public_access_by_id == false) {
-                abort(403, 'You must be authenticated by API or login in order to view this record through this URL');
-            }
-        } else {
-            $passed_id_type = 'slug';
-            if (! auth()->check() && $this->model->allow_public_access_by_slug == false) {
-                abort(403, 'You must be authenticated by API or login in order to view this record through this URL');
-            }
-        }
-        if ($passed_id_type !== 'encrypted' && $this->model->allow_any_unencrypred_access == false) {
-            abort(403, 'You must be authenticated by API or login in order to view this record through this URL');
-        }
-
-        if ($passed_id_type == 'slug') {
-            $this->model = $this->model->where('slug', $id)->first();
-        } else {
-            $this->model = $this->model->find($id);
-        }
-        if (! $this->model) {
-            abort(404, 'Record not found');
-        }
+        $this->model = $this->findRecord($id, guestOptIns: true) ?? abort(404, 'Record not found');
 
         $this->service = LuModels::fromData('read', $this->service, $this->model, request()->all(), $this->controller_type);
         $this->model = $this->service->model;
@@ -236,15 +308,12 @@ class ApiResourceController
         $this->meta = $this->service->controller_data['meta'];
         $this->controller_type = $this->service->type;
 
-        return $data;
+        return $this->model;
     }
 
     public function edit($id)
     {
-        $this->model = $this->model->find($id);
-        if (! $this->model) {
-            abort(404, 'Record not found');
-        }
+        $this->model = $this->findRecord($id, guestOptIns: true) ?? abort(404, 'Record not found');
 
         $this->service = LuModels::fromData('read', $this->service, $this->model, request()->all(), $this->controller_type);
         $this->model = $this->service->model;
@@ -256,7 +325,7 @@ class ApiResourceController
     {
 
         if (! isset($data)) {
-            $data = request()->except(['_token', '_method']);
+            $data = request()->except(self::NOT_INPUT);
         }
         $client_keys = array_keys($data);
 
@@ -299,6 +368,9 @@ class ApiResourceController
         if ($validator->fails()) {
             return Result::invalid($validator);
         }
+        if ($this->dryRun()) {
+            return LuModels::wouldDo('create', $this->service, $this->model, $data, $this->controller_type);
+        }
 
         // dd($validated);
         // pass data and controller_type web, api, spa, etc.... (for record keeping)
@@ -312,10 +384,10 @@ class ApiResourceController
     public function update($id, $data = null)
     {
         if (! isset($data)) {
-            $data = request()->except(['_token', '_method']);
+            $data = request()->except(self::NOT_INPUT);
         }
 
-        $obj = $this->model->find($id);
+        $obj = $this->findRecord($id);
         if (! $obj) {
             return Result::notFound();
         }
@@ -323,6 +395,9 @@ class ApiResourceController
         $validator = $this->validatorFor($data, 'update', array_keys($data));
         if ($validator->fails()) {
             return Result::invalid($validator);
+        }
+        if ($this->dryRun()) {
+            return LuModels::wouldDo('update', $this->service, $obj, $data, $this->controller_type);
         }
 
         $data = LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type);
@@ -337,7 +412,7 @@ class ApiResourceController
         // check if auth user owns the record
         // if not abort
         // if yes delete
-        $obj = $this->model->find($id);
+        $obj = $this->findRecord($id);
         if (! $obj) {
             return Result::notFound();
         }
@@ -345,7 +420,11 @@ class ApiResourceController
         // if not abort
         // if yes delete
 
-        $data = LuModels::fromData('delete', $this->service, $obj, request()->except(['_token', '_method']), $this->controller_type);
+        if ($this->dryRun()) {
+            return LuModels::wouldDo('delete', $this->service, $obj, [], $this->controller_type);
+        }
+
+        $data = LuModels::fromData('delete', $this->service, $obj, request()->except(self::NOT_INPUT), $this->controller_type);
 
         $record = self::recordOf($data, $obj);
 

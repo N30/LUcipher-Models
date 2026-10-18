@@ -64,7 +64,14 @@ class LuModel extends Model
 
     public $allow_public_access_by_slug = false; // same for slugs though slight depending on model harder to guess
 
-    public $allow_any_unencrypred_access = false; // SECURE THE FORT DOWN AND GIVE EVERYTHING AN ID
+    /**
+     * Let a guest name a record by plain key or slug (both opt-ins above at once). A signed-in caller
+     * may always use a plain key: the policy decides what they reach (4.0; 3.0.x refused it).
+     */
+    public $allow_any_unencrypted_access = false; // SECURE THE FORT DOWN AND GIVE EVERYTHING AN ID
+
+    /** @deprecated 4.0 misspelling of $allow_any_unencrypted_access; still read as an alias */
+    public $allow_any_unencrypred_access = false;
 
     public function displayText($column)
     {

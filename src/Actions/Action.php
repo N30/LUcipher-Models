@@ -5,6 +5,7 @@ namespace All1\LuModels\Actions;
 use All1\LuModels\Audit\AuditLogger;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Descriptor;
+use All1\LuModels\Support\Result;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -109,6 +110,26 @@ abstract class Action
         $service->authorize($this->name(), $model, $data, $controller_type);
 
         return $this->execute($service, $model, (array) $data, $controller_type);
+    }
+
+    /**
+     * Authorize, then stop: what this operation would do with $data, in the conditional, so no
+     * transport can mistake it for work done (study §2.5). Nothing is written, no event fires, no
+     * audit row is recorded. The transport validates before calling this, as it does before handle().
+     */
+    public function dryRun(LuModels $service, $model, array $data, ?string $controller_type): Result
+    {
+        $service->authorize($this->name(), $model, $data, $controller_type);
+
+        return Result::would($this->would($model, $data), $data);
+    }
+
+    /** The conditional sentence of a dry run: "Would create Post", "Would update Post #5". */
+    public function would($model, array $data): string
+    {
+        $key = $model instanceof Model && $model->exists ? ' #'.$model->getKey() : '';
+
+        return 'Would '.$this->name().' '.class_basename($model).$key;
     }
 
     /**

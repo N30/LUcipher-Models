@@ -11,6 +11,7 @@ use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\Descriptor;
 use All1\LuModels\Support\Exposure;
 use All1\LuModels\Support\FieldVisibility;
+use All1\LuModels\Support\Result;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -151,11 +152,17 @@ class LuModels
         return $data;
     }
 
+    /** The filter operators of the listing: filter[field][op]=value; filter[field]=value is eq. */
+    public const FILTER_OPERATORS = ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'like', 'in', 'null'];
+
     /**
      * The one query behind index and show (3.0.x carried two copies that had already drifted):
      * eager loads from the model's own list or the descriptor's relationships (one level deeper
-     * too), the request's `with`, a search over fields the action may read, an order the request
-     * may set, pagination or a flat `limit`; then visibility on the rows and the column list.
+     * too) plus the request's `include` (or `with`), its `filter`s, a `search` over fields the
+     * action may read, a `sort` (or the legacy `order`), pagination or a flat `limit`; then
+     * visibility on the rows, sparse `fields`, and the column list. Every name the request sends is
+     * checked against what the action may read: an unknown or hidden field is a 400 naming it,
+     * never a silent probe.
      *
      * @param  (callable(Builder): mixed)|null  $scope
      */
@@ -164,16 +171,57 @@ class LuModels
         $request = request();
         $visibility = FieldVisibility::for($model);
         $descriptor = Descriptor::for($model);
+        $name = class_basename($model);
+        $readable = $visibility->readable(array_keys($descriptor->fields), $read_action);
 
-        $with = $request->input('with');
-        if ($with !== null && ! is_array($with)) {
-            abort(400, 'The with parameter must be an array.');
+        // include (the JSON API spelling) and with (the 3.0.x spelling) are one list: descriptor relationships only
+        $include = array_values(array_unique([...self::listParam($request->input('include')), ...self::listParam($request->input('with'))]));
+        foreach ($include as $relation) {
+            if (! array_key_exists($relation, $descriptor->relationships)) {
+                abort(400, 'The include '.$relation.' is not a relationship of '.$name.'.');
+            }
         }
+
+        $filter = $request->input('filter', []);
+        if (! is_array($filter)) {
+            abort(400, 'The filter parameter must be an array, e.g. filter[title]=Alpha or filter[id][gte]=10.');
+        }
+        $filters = [];
+        foreach ($filter as $field => $spec) {
+            if (! in_array($field, $readable, true)) {
+                abort(400, 'The filter field '.$field.' is not filterable.');
+            }
+            foreach (is_array($spec) ? $spec : ['eq' => $spec] as $op => $value) {
+                if (! in_array($op, self::FILTER_OPERATORS, true)) {
+                    abort(400, 'The filter operator '.$op.' is not one of '.implode(', ', self::FILTER_OPERATORS).'.');
+                }
+                if ($op !== 'in' && ! is_scalar($value) && $value !== null) {
+                    abort(400, 'The filter value for '.$field.'['.$op.'] must be a single value.');
+                }
+                $filters[] = [$field, $op, $value];
+            }
+        }
+
+        $sorts = [];
+        foreach (self::listParam($request->input('sort')) as $entry) {
+            $field = ltrim($entry, '-+');
+            if (! in_array($field, $readable, true)) {
+                abort(400, 'The sort field '.$field.' is not sortable.');
+            }
+            $sorts[$field] = str_starts_with($entry, '-') ? 'desc' : 'asc';
+        }
+
+        $fields = self::listParam($request->input('fields'));
+        foreach ($fields as $field) {
+            if (! in_array($field, $readable, true)) {
+                abort(400, 'The field '.$field.' cannot be selected.');
+            }
+        }
+
         $default_order = strtolower((string) ($descriptor->options['index_default_order'] ?? 'asc'));
         $order = strtolower((string) $request->input('order', $default_order));
         $order = in_array($order, ['asc', 'desc'], true) ? $order : $default_order;
         $search = $request->input('search');
-        $readable = $visibility->readable(array_keys($descriptor->fields), $read_action);
         $search_fields = array_values(array_intersect(
             (array) $request->input('search_fields', $descriptor->options['default_search_columns'] ?: $readable),
             $readable,
@@ -181,15 +229,13 @@ class LuModels
 
         $query = $model->newQuery()->select(['*']);
 
-        foreach ($this->eagerLoads($model, $descriptor) as $relation) {
+        foreach (array_unique([...$this->eagerLoads($model, $descriptor), ...$include]) as $relation) {
             $columns = $model->index_relationships_columns[$relation] ?? ['*'];
             $query->with([$relation => fn ($q) => $q->select($columns)]);
         }
-        foreach ((array) $with as $relation) {
-            if ($relation !== null && isset($model->index_relationships_columns[$relation])) {
-                $columns = $model->index_relationships_columns[$relation];
-                $query->with([$relation => fn ($q) => $q->select($columns)]);
-            }
+
+        foreach ($filters as [$field, $op, $value]) {
+            self::applyFilter($query, $field, $op, $value);
         }
 
         if ($search !== null && $search !== '') {
@@ -207,6 +253,10 @@ class LuModels
 
         if ($scope !== null) {
             $scope($query);
+        } elseif ($sorts !== []) {
+            foreach ($sorts as $field => $direction) {
+                $query->orderBy($field, $direction);
+            }
         } else {
             $query->orderBy($descriptor->options['index_default_sort'] ?? $model->getKeyName(), $order);
         }
@@ -214,7 +264,16 @@ class LuModels
         if ($paginate) {
             $per_page = (int) $request->input('per_page', 15);
             $data = $query->paginate($per_page > 0 && $per_page <= 200 ? $per_page : 15);
-            $data->appends(array_filter(['per_page' => $request->input('per_page'), 'with' => $with, 'order' => $request->input('order'), 'search' => $search]));
+            $data->appends(array_filter([
+                'per_page' => $request->input('per_page'),
+                'include' => $include ?: null,
+                'filter' => $filter ?: null,
+                'sort' => $request->input('sort'),
+                'fields' => $request->input('fields'),
+                'order' => $request->input('order'),
+                'search' => $search,
+                'search_fields' => $request->input('search_fields'),
+            ]));
         } else {
             $limit = (int) $request->input('limit', 0);
             $data = ($scope === null && $limit > 0 ? $query->limit($limit) : $query)->get();
@@ -222,17 +281,24 @@ class LuModels
 
         $first = $data->first();
         $db_columns = $visibility->readable($first ? array_keys($first->getAttributes()) : array_keys($descriptor->fields), $read_action);
+        if ($fields !== []) {
+            $db_columns = array_values(array_intersect($db_columns, [...$fields, $model->getKeyName()]));
+        }
 
         foreach ($data as $row) {
             $row->makeHidden($visibility->hiddenFor($row, $read_action));
+            if ($fields !== []) {
+                // sparse fields: the key always, the loaded relationships always, the attributes asked for
+                $row->setVisible(array_values(array_unique([...$fields, $model->getKeyName(), ...array_keys($row->getRelations())])));
+            }
         }
 
         if ($first) {
-            foreach ($first->getRelations() as $name => $related) {
+            foreach ($first->getRelations() as $relation => $related) {
                 $sample = is_iterable($related) ? (count($related) > 0 ? $related[0] : null) : $related;
                 if ($sample !== null && method_exists($sample, 'getAttributes')) {
                     foreach (array_keys($sample->getAttributes()) as $column) {
-                        $db_columns[$name.'.'.$column] = $name.'.'.$column;
+                        $db_columns[$relation.'.'.$column] = $relation.'.'.$column;
                     }
                 }
             }
@@ -240,8 +306,11 @@ class LuModels
 
         $this->db_columns = $db_columns;
         $this->filters = [
-            'with' => $with,
+            'with' => $include ?: null,
+            'include' => $include,
+            'filter' => $filter,
             'sort' => $request->input('sort'),
+            'fields' => $fields,
             'order' => $request->input('order'),
             'limit' => $request->input('limit'),
             'page' => $request->input('page'),
@@ -251,6 +320,38 @@ class LuModels
         $this->data = $data;
 
         return $data;
+    }
+
+    /** One filter clause. $field and $op were checked against the readable fields and FILTER_OPERATORS. */
+    protected static function applyFilter(Builder $query, string $field, string $op, mixed $value): void
+    {
+        match ($op) {
+            'eq' => $query->where($field, '=', $value),
+            'ne' => $query->where($field, '!=', $value),
+            'lt' => $query->where($field, '<', $value),
+            'lte' => $query->where($field, '<=', $value),
+            'gt' => $query->where($field, '>', $value),
+            'gte' => $query->where($field, '>=', $value),
+            'like' => $query->where($field, 'LIKE', '%'.$value.'%'),
+            'in' => $query->whereIn($field, self::listParam($value)),
+            'null' => filter_var($value, FILTER_VALIDATE_BOOL) ? $query->whereNull($field) : $query->whereNotNull($field),
+            default => throw new \InvalidArgumentException('Unknown filter operator '.$op.'.'),
+        };
+    }
+
+    /**
+     * A list parameter as the request may spell it: `a,b`, `['a', 'b']`, or nothing.
+     *
+     * @return list<string>
+     */
+    public static function listParam(mixed $value): array
+    {
+        if ($value === null || $value === '' || $value === []) {
+            return [];
+        }
+        $items = is_array($value) ? $value : explode(',', (string) $value);
+
+        return array_values(array_filter(array_map(fn ($item) => trim((string) $item), $items), fn (string $item) => $item !== ''));
     }
 
     /**
@@ -276,6 +377,14 @@ class LuModels
         }
 
         return $relations;
+    }
+
+    /** A dry run of $action: authorized, nothing written (Actions\Action::dryRun()). */
+    public static function wouldDo($action, $service, $model, $data, $controller_type): Result
+    {
+        $class = self::actionClass($action, $model);
+
+        return app($class)->dryRun($service, $model, (array) $data, $controller_type);
     }
 
     public static function fromData($action, $service, $model, $data, $controller_type)

@@ -7,8 +7,9 @@ use Illuminate\Support\Str;
 
 class ApiRestController extends ApiResourceController
 {
-    public function __invoke(Request $request, $model = null, $action = 'index', $id = null)
+    public function __invoke(Request $request)
     {
+        $id = $request->route('id');
 
         $this->prepare($request);
         $method = $request->method();
@@ -25,6 +26,12 @@ class ApiRestController extends ApiResourceController
 
             return redirect()->back()->with('messages', [$result->message]);
         }
+    }
+
+    /** A browser form has nowhere to show a conditional: dry_run is ignored on this transport. */
+    protected function supportsDryRun(): bool
+    {
+        return false;
     }
 
     public function chooseView($data)

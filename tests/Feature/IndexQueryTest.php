@@ -29,29 +29,30 @@ class IndexQueryTest extends TestCase
     public function test_it_paginates_and_honours_per_page_and_order(): void
     {
         // LuModel declares index_default_order = DESC; 3.0.x ignored it
-        $this->index()->assertOk()->assertJsonPath('total', 3)->assertJsonPath('per_page', 15)->assertJsonPath('data.0.title', 'Gamma');
+        $this->index()->assertOk()->assertJsonPath('meta.total', 3)->assertJsonPath('meta.per_page', 15)->assertJsonPath('data.0.title', 'Gamma');
         $this->index(['order' => 'asc'])->assertJsonPath('data.0.title', 'Alpha');
-        $this->index(['per_page' => 2])->assertJsonPath('per_page', 2)->assertJsonCount(2, 'data');
-        $this->index(['per_page' => 9999])->assertJsonPath('per_page', 15);
+        $this->index(['per_page' => 2])->assertJsonPath('meta.per_page', 2)->assertJsonPath('meta.last_page', 2)->assertJsonPath('links.next', fn ($url) => str_contains($url, 'page=2'))->assertJsonCount(2, 'data');
+        $this->index(['per_page' => 9999])->assertJsonPath('meta.per_page', 15);
         $this->index(['order' => 'junk; drop table posts'])->assertOk()->assertJsonPath('data.0.title', 'Gamma');
     }
 
     public function test_limit_returns_a_flat_list(): void
     {
-        $this->index(['limit' => 2])->assertOk()->assertJsonCount(2)->assertJsonMissingPath('total');
+        $this->index(['limit' => 2])->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('meta.count', 2)->assertJsonMissingPath('meta.total');
     }
 
     public function test_search_covers_readable_fields_only(): void
     {
-        $this->index(['search' => 'Beta'])->assertJsonPath('total', 1)->assertJsonPath('data.0.title', 'Beta');
-        $this->index(['search' => 'TOKEN-Beta', 'search_fields' => ['secret_token']])->assertJsonPath('total', 0);
-        $this->index(['search' => 'body of Beta', 'search_fields' => ['body']])->assertJsonPath('total', 0);
-        $this->index(['search' => 'Gamma', 'search_fields' => ['title', 'secret_token']])->assertJsonPath('total', 1);
+        $this->index(['search' => 'Beta'])->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.title', 'Beta');
+        $this->index(['search' => 'TOKEN-Beta', 'search_fields' => ['secret_token']])->assertJsonPath('meta.total', 0);
+        $this->index(['search' => 'body of Beta', 'search_fields' => ['body']])->assertJsonPath('meta.total', 0);
+        $this->index(['search' => 'Gamma', 'search_fields' => ['title', 'secret_token']])->assertJsonPath('meta.total', 1);
     }
 
     public function test_with_must_be_an_array_and_relations_can_be_named(): void
     {
-        $this->index(['with' => 'user'])->assertStatus(400);
+        $this->index(['with' => 'user'])->assertOk()->assertJsonPath('data.0.user.name', 'Neo', 'a comma list is accepted too');
+        $this->index(['with' => ['owner']])->assertStatus(400);
         $this->index(['with' => ['user']])->assertOk()->assertJsonPath('data.0.user.name', 'Neo');
     }
 
@@ -62,8 +63,8 @@ class IndexQueryTest extends TestCase
         $this->actingAs($this->user)
             ->getJson(route('lu::api.resources', ['model' => 'posts', 'action' => 'show', 'id' => encrypt($post->id)]))
             ->assertOk()
-            ->assertJsonPath('0.title', 'Beta')
-            ->assertJsonPath('0.body', 'body of Beta')
-            ->assertJsonMissingPath('0.secret_token');
+            ->assertJsonPath('data.title', 'Beta')
+            ->assertJsonPath('data.body', 'body of Beta')
+            ->assertJsonMissingPath('data.secret_token');
     }
 }

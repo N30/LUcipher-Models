@@ -57,6 +57,29 @@ final class ResourceRoutes
             ->name($name.'.destroy');
     }
 
+    /**
+     * The REST-shaped routes of one transport: GET {uri}/{model} (index), POST {uri}/{model} (store),
+     * GET, PUT|PATCH and DELETE {uri}/{model}/{id} (show, update, destroy). The action travels as a
+     * route default, so the controllers read it exactly as they read it from the action-shaped
+     * routes. Names: {name}.index, .store, .show, .update, .destroy.
+     *
+     * @param  list<string>  $writeMiddleware  middleware for the store/update/destroy routes only
+     */
+    public static function registerRest(string $uri, string $controller, string $name, ?Router $router = null, array $writeMiddleware = []): void
+    {
+        $router ??= Route::getFacadeRoot();
+        $collection = rtrim($uri, '/').'/{model}';
+        $member = $collection.'/{id}';
+
+        $router->get($collection, $controller)->defaults('action', 'index')->name($name.'.index');
+        $router->post($collection, $controller)->defaults('action', 'store')->middleware($writeMiddleware)->name($name.'.store');
+        // the id slot never takes an action name, so /{model}/store stays the action-shaped route's (or nothing)
+        $notAnAction = '(?!(?:'.implode('|', array_keys(self::ACTION_METHODS)).')$)[^/]+';
+        $router->get($member, $controller)->where('id', $notAnAction)->defaults('action', 'show')->name($name.'.show');
+        $router->match(['PUT', 'PATCH'], $member, $controller)->where('id', $notAnAction)->defaults('action', 'update')->middleware($writeMiddleware)->name($name.'.update');
+        $router->delete($member, $controller)->where('id', $notAnAction)->defaults('action', 'destroy')->middleware($writeMiddleware)->name($name.'.destroy');
+    }
+
     /** Whether $method may reach $action. Unknown actions are never allowed. */
     public static function allows(string $method, ?string $action): bool
     {

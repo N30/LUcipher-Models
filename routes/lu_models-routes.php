@@ -25,21 +25,21 @@ if (config('lu::models.enable_rest_routes')) {
     });
 }
 if (config('lu::models.enable_api_routes')) {
+    // /api[/{api_prefix}]: the REST-shaped routes (GET|POST /{model}, GET|PUT|PATCH|DELETE /{model}/{id})
+    // are the documented API; the action-shaped /{model}/{action}/{id?} routes stay one release, deprecated.
+    $apiPrefix = trim('api/'.trim((string) config('lu::models.api_prefix'), '/'), '/');
+    $registerApi = function (): void {
+        ResourceRoutes::register('', ApiResourceController::class, 'lu::api.resources', false, writeMiddleware: ['throttle:lu-models-writes']);
+        ResourceRoutes::registerRest('', ApiResourceController::class, 'lu::api', writeMiddleware: ['throttle:lu-models-writes']);
+    };
     if (array_key_exists('auth:sanctum', App::make(Router::class)->getMiddleware())) {
-        Route::prefix('api')
-            ->middleware(['api', 'auth:sanctum', 'throttle:lu-models-api'])
-            ->group(function () {
-                ResourceRoutes::register('', ApiResourceController::class, 'lu::api.resources', false, writeMiddleware: ['throttle:lu-models-writes']);
-
-            });
+        Route::prefix($apiPrefix)->middleware(['api', 'auth:sanctum', 'throttle:lu-models-api'])->group($registerApi);
     } else {
         // v3.0: fail closed. 2.x registered these routes UNAUTHENTICATED when sanctum was missing.
         // If you genuinely need unauthenticated API resources, opt in via lu::models.allow_unauthenticated_api.
         if (config('lu::models.allow_unauthenticated_api')) {
-            Route::prefix('api')->middleware(['api', 'throttle:lu-models-api'])->group(function () {
-                Log::warning('lu_models: auth:sanctum middleware not found — API resource routes are UNAUTHENTICATED (lu::models.allow_unauthenticated_api enabled)');
-                ResourceRoutes::register('', ApiResourceController::class, 'lu::api.resources', false, writeMiddleware: ['throttle:lu-models-writes']);
-            });
+            Log::warning('lu_models: auth:sanctum middleware not found — API resource routes are UNAUTHENTICATED (lu::models.allow_unauthenticated_api enabled)');
+            Route::prefix($apiPrefix)->middleware(['api', 'throttle:lu-models-api'])->group($registerApi);
         } else {
             Log::warning('lu_models: auth:sanctum middleware not found — API resource routes NOT registered (set lu::models.allow_unauthenticated_api to override)');
         }

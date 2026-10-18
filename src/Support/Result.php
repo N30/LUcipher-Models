@@ -23,12 +23,22 @@ final class Result
         public readonly ?MessageBag $errors,
         public readonly int $status,
         public readonly ?string $id,
+        public readonly bool $would = false,
     ) {}
 
     /** A write that happened. $id is the encrypted key a redirect may use; defaults to the record's. */
     public static function ok(string $message, ?Model $record = null, mixed $data = null, ?string $id = null): self
     {
         return new self($message, $data ?? $record, $record, null, 200, $id);
+    }
+
+    /**
+     * A dry run: what the write would do, authorized and validated, nothing written. The message is in
+     * the conditional ("Would create Post") so no transport can report it as work done. 200.
+     */
+    public static function would(string $message, mixed $data = null): self
+    {
+        return new self($message, $data, null, null, 200, null, true);
     }
 
     /** Input the model refused: a validator that failed, or its message bag. 422. */
@@ -68,6 +78,9 @@ final class Result
         }
 
         $payload = ['message' => $this->message, 'data' => $this->data];
+        if ($this->would) {
+            $payload = ['would' => true] + $payload;
+        }
         if ($this->id !== null) {
             $payload['id'] = $this->id;
         }
@@ -79,6 +92,7 @@ final class Result
     public function toArray(): array
     {
         return array_filter([
+            'would' => $this->would ?: null,
             'message' => $this->message,
             'data' => $this->data,
             'id' => $this->id,

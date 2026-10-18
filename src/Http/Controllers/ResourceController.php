@@ -10,8 +10,10 @@ use Illuminate\Support\Str;
 
 class ResourceController extends ApiResourceController
 {
-    public function __invoke(Request $request, $model = null, $action = 'index', $id = null)
+    public function __invoke(Request $request)
     {
+        $model = $request->route('model');
+        $id = $request->route('id');
 
         $this->prepare($request);
         $method = $request->method();
@@ -52,6 +54,12 @@ class ResourceController extends ApiResourceController
     protected function redirectRouteName(): string
     {
         return preg_replace('/\.(store|update|destroy)$/', '', request()->route()->getName());
+    }
+
+    /** A browser form has nowhere to show a conditional: dry_run is ignored on this transport. */
+    protected function supportsDryRun(): bool
+    {
+        return false;
     }
 
     public function chooseView($data)

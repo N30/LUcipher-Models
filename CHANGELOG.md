@@ -29,6 +29,18 @@
 - **`Concerns\OwnedByUser`** wires the ownership observer and the global scope the package shipped but never
   registered: `user_id` is stamped from the signed-in user, every query is scoped to their rows, guests see
   none (`1 = 0`, not `where user_id = null`), console commands are not scoped, `ownerKeyName()` picks the column.
+- **A REST-shaped JSON API.** `GET|POST /api/{model}` and `GET|PUT|PATCH|DELETE /api/{model}/{id}`
+  (route names `lu::api.index|store|show|update|destroy`), honouring `lu::models.api_prefix`. One
+  envelope: `{data, meta, links}` for a page, `{data, meta: {count}}` for a flat `limit`, `{data}` for a
+  record, `{message, data, id}` for a write, Laravel's `{message, errors}` for 422. The listing takes
+  `filter[field]=value` and `filter[field][op]=value` (`eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `like`, `in`,
+  `null`), `sort=-created_at,title`, `fields=title,body`, `include=user` (alias of `with`), beside the
+  existing `search`, `search_fields`, `page`, `per_page`, `limit` and `order`. Every name is checked
+  against what the action may read: an unknown, hidden or unreadable field, operator or relationship is a
+  400 naming it, never a silent probe.
+- **Dry run.** A write to the API with `dry_run=1` is authorized and validated, answers
+  `{would: true, message: "Would create Post", data}` and writes nothing: no row, no event, no audit
+  entry. `Result::would()`, `Action::dryRun()` and `Action::would()` carry it; browser transports ignore it.
 - **`schema()` and `supports()` on every operation.** `schema($model)` is a JSON Schema 2020-12 subset of
   what the operation accepts (writable fields minus what the package injects for create/update, the key
   for read/delete, the query parameters for index); `supports($model, $transport)` follows exposure.
@@ -88,8 +100,17 @@
 - The descriptor's `update` rules are the model's `update_validation_rules` only, as the validator applies
   them; the inspector and `schema()` no longer show store rules on a partial update.
 - Facade aliases in `src/` and the routes (`use Str;`, bare `Route::`, `App::`, `Log::`) are imports.
+- **Plain keys for signed-in callers.** `show`, `edit`, `update` and `destroy` accept the plain key, the
+  encrypted key or a slug from a signed-in caller; the policy decides what they reach. A guest still needs
+  the encrypted key unless the model opts in (`$allow_public_access_by_id`, `$allow_public_access_by_slug`,
+  or `$allow_any_unencrypted_access` for both; the 3.0.x misspelling is read as an alias). 3.0.x refused
+  plain keys for everyone, so the shipped index could not reach its own show and edit pages. A value that
+  neither decrypts nor matches is a 404, not a 500.
+- `show` returns the record (the API answers `{data: {...}}`); 3.0.x returned a one-row collection.
 
 ### Deprecated
+- The action-shaped API routes `/api/{model}/{action}/{id?}` (`lu::api.resources`) answer for one more
+  release; the REST-shaped routes are the documented API and what the OpenAPI document describes.
 - `Verbs\Creation`, `Updation`, `Deletion`, `Revelation`, `Annexation` are adapters over the operations'
   `perform()` for one release: `App\Models\Verbs\{folder}\{Model}{Verb}` overrides and direct callers keep
   working. Override `App\LuModels\Actions\{folder}\{Action}{Model}` instead.

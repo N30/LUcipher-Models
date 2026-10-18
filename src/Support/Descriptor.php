@@ -179,7 +179,7 @@ final class Descriptor implements Arrayable
                 'update_safety' => ($instance->update_safety ?? true) !== false,
                 'allow_public_access_by_id' => (bool) ($instance->allow_public_access_by_id ?? false),
                 'allow_public_access_by_slug' => (bool) ($instance->allow_public_access_by_slug ?? false),
-                'allow_any_unencrypted_access' => (bool) ($instance->allow_any_unencrypred_access ?? false),
+                'allow_any_unencrypted_access' => (bool) (($instance->allow_any_unencrypted_access ?? false) || ($instance->allow_any_unencrypred_access ?? false)),
             ],
         );
     }
