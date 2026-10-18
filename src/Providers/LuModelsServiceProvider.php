@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Mcp\Server;
 use Livewire\Livewire;
 
 /**
@@ -114,6 +115,14 @@ class LuModelsServiceProvider extends ServiceProvider
      *
      * @throws \LogicException
      */
+    /** The MCP transport needs laravel/mcp (suggested, not required): say so instead of failing on a missing class. */
+    public static function assertMcpInstalled(string $class = Server::class): void
+    {
+        if (! class_exists($class)) {
+            throw new \LogicException('lu::models.enable_mcp_routes is on but laravel/mcp is not installed. Run `composer require laravel/mcp` or turn the MCP transport off.');
+        }
+    }
+
     public static function assertLivewireInstalled(string $class = Livewire::class): void
     {
         if (! class_exists($class)) {

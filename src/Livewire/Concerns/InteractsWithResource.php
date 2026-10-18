@@ -2,9 +2,7 @@
 
 namespace All1\LuModels\Livewire\Concerns;
 
-use All1\LuModels\Models\LuModel;
 use All1\LuModels\Services\LuModels;
-use All1\LuModels\Support\Descriptor;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\Locked;
 
@@ -38,17 +36,7 @@ trait InteractsWithResource
     /** A service initialized the way the controllers initialize theirs, for one action, without a route. */
     protected function service(string $action): LuModels
     {
-        $service = new LuModels;
-        $service->type = 'spa';
-        $service->controller_data = [
-            'action' => $action,
-            'route_prefix' => $this->routePrefix,
-            'model_name' => class_basename($this->modelClass),
-            'meta' => LuModel::getMetaData($this->modelClass),
-            'columns' => Descriptor::for($this->modelClass)->legacyColumns(),
-        ];
-
-        return $service;
+        return LuModels::forTransport('spa', $this->modelClass, $action);
     }
 
     /** Onto the user's stream, not into the component's own view (study §2.7): the page's toasts component picks it up. */

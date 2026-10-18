@@ -4,15 +4,13 @@ namespace All1\LuModels\Http\Controllers\Api;
 
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Envelope;
 use All1\LuModels\Support\Keys;
 use All1\LuModels\Support\Result;
 use All1\LuModels\Support\Writer;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -129,34 +127,7 @@ class ApiResourceController
             return $result;
         }
 
-        if ($result instanceof Paginator) {
-            $total = $result instanceof LengthAwarePaginator;
-
-            return new JsonResponse([
-                'data' => $result->items(),
-                'meta' => [
-                    'current_page' => $result->currentPage(),
-                    'from' => $result->firstItem(),
-                    'to' => $result->lastItem(),
-                    'per_page' => $result->perPage(),
-                    'last_page' => $total ? $result->lastPage() : null,
-                    'total' => $total ? $result->total() : null,
-                    'path' => $result->path(),
-                ],
-                'links' => [
-                    'first' => $result->url(1),
-                    'last' => $total ? $result->url($result->lastPage()) : null,
-                    'prev' => $result->previousPageUrl(),
-                    'next' => $result->nextPageUrl(),
-                ],
-            ], 200);
-        }
-
-        if ($result instanceof Collection) {
-            return new JsonResponse(['data' => $result->values(), 'meta' => ['count' => $result->count()]], 200);
-        }
-
-        return new JsonResponse(['data' => $result], 200);
+        return new JsonResponse(Envelope::of($result), 200);
     }
 
     /** Whether this transport honours `dry_run`: the API does; a browser form has nowhere to show a conditional. */

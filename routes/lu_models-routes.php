@@ -5,12 +5,14 @@ use All1\LuModels\Http\Controllers\Api\ApiRestController;
 use All1\LuModels\Http\Controllers\Api\OpenApiController;
 use All1\LuModels\Http\Controllers\ResourceController;
 use All1\LuModels\Http\Controllers\SpaController;
+use All1\LuModels\Mcp\LuModelsServer;
 use All1\LuModels\Providers\LuModelsServiceProvider;
 use All1\LuModels\Routing\ResourceRoutes;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Laravel\Mcp\Facades\Mcp;
 
 // Route::middleware(['auth'])->group(function () {
 if (config('lu::models.enable_web_routes')) {
@@ -65,4 +67,20 @@ if (config('lu::models.enable_spa_routes')) {
         // Livewire component with typed parameters (study §6.5). Writes go through Livewire or the web routes.
         Route::get('spa/{model}/{action?}/{id?}', SpaController::class)->where('action', 'index|create|show|edit')->name('lu::spa.resources');
     });
+}
+if (config('lu::models.enable_mcp_routes')) {
+    LuModelsServiceProvider::assertMcpInstalled();
+    // The fifth mouth: the same operations, policies, audit and rate limits, for agents. HTTP fails closed
+    // like the API (sanctum, or the explicit unauthenticated opt-in); the local server is for a developer's
+    // own machine and runs as lu::models.mcp.local_user.
+    $mcpPath = trim((string) (config('lu::models.mcp.path') ?: 'mcp/lu-models'), '/');
+    if (array_key_exists('auth:sanctum', App::make(Router::class)->getMiddleware())) {
+        Mcp::web($mcpPath, LuModelsServer::class)->middleware(['api', 'auth:sanctum', 'throttle:lu-models-mcp']);
+    } elseif (config('lu::models.allow_unauthenticated_api')) {
+        Log::warning('lu_models: auth:sanctum middleware not found — the MCP server is UNAUTHENTICATED (lu::models.allow_unauthenticated_api enabled)');
+        Mcp::web($mcpPath, LuModelsServer::class)->middleware(['api', 'throttle:lu-models-mcp']);
+    } else {
+        Log::warning('lu_models: auth:sanctum middleware not found — the MCP server is NOT registered over HTTP (set lu::models.allow_unauthenticated_api to override)');
+    }
+    Mcp::local('lu-models', LuModelsServer::class);
 }

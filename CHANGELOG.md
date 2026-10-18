@@ -68,6 +68,14 @@
   run or dry-run the operation, one `Result`) behind the API, web, rest and Livewire; `Support\Keys`
   resolves a plain, encrypted or slug key; the listing query takes its grammar as data
   (`controller_index($model, $params)`), so a component can feed its own state.
+- **The MCP server** (`lu::models.enable_mcp_routes`, needs `laravel/mcp`): `Mcp\LuModelsServer` builds one
+  tool per model exposed on the new `mcp` transport and per operation it supports (`posts_list`,
+  `posts_get`, `posts_create`, `posts_update`, `posts_delete`), whose input schema **is** the operation's
+  `schema()`, plus `lu_models_models` and `lu_models_describe`. Writes take `dry_run` and then answer in the
+  conditional ("Would create Post") and write nothing. Over HTTP at `lu::models.mcp.path` behind Sanctum
+  (fail closed like the API), locally as `php artisan mcp:start lu-models` running as `mcp.local_user`.
+  `mcp` is the fifth transport: exposure lists it, policies receive it, the audit row records it,
+  `rate_limits.mcp` throttles it. Refusals (403, 404, 400, 422) come back as tool errors an agent can read.
 - **`schema()` and `supports()` on every operation.** `schema($model)` is a JSON Schema 2020-12 subset of
   what the operation accepts (writable fields minus what the package injects for create/update, the key
   for read/delete, the query parameters for index); `supports($model, $transport)` follows exposure.

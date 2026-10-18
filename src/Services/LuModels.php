@@ -382,6 +382,27 @@ class LuModels
         return $relations;
     }
 
+    /**
+     * A service initialized for one model and action without a route: what the Livewire components and
+     * the MCP tools use, shaped like the controllers initialize theirs.
+     */
+    public static function forTransport(string $transport, string $class, string $action): self
+    {
+        $descriptor = Descriptor::for($class);
+        $service = new self;
+        $service->type = $transport;
+        $service->controller_type = $transport;
+        $service->controller_data = [
+            'action' => $action,
+            'route_prefix' => $descriptor->slug,
+            'model_name' => $descriptor->name,
+            'meta' => LuModel::getMetaData($class),
+            'columns' => $descriptor->legacyColumns(),
+        ];
+
+        return $service;
+    }
+
     /** A dry run of $action: authorized, nothing written (Actions\Action::dryRun()). */
     public static function wouldDo($action, $service, $model, $data, $controller_type): Result
     {

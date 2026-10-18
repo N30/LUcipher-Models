@@ -43,7 +43,7 @@ abstract class TestCase extends Orchestra
         ]);
         $app['config']->set('auth.providers.users.model', User::class);
 
-        foreach (['web', 'rest', 'api', 'spa'] as $transport) {
+        foreach (['web', 'rest', 'api', 'spa', 'mcp'] as $transport) {
             $app['config']->set("lu::models.enable_{$transport}_routes", true);
         }
         $app['config']->set('lu::models.models_path', __DIR__.'/Fixtures/app/Models');

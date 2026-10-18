@@ -57,6 +57,7 @@ return [
         'rest' => 120,
         'api' => 60,
         'spa' => 120,
+        'mcp' => 60,
         'writes' => 20,
     ],
 
@@ -101,5 +102,14 @@ return [
     'enable_web_routes' => false, // protected  with Auth and Policies and above settings
     'enable_spa_routes' => false, // protected  with Auth and Policies and above settings
     'enable_rest_routes' => false, // protected  with Auth and Policies
+    // The MCP transport (needs laravel/mcp): one tool per exposed model and operation, plus lu_models_models and
+    // lu_models_describe, at mcp.path over HTTP (sanctum, fail closed like the API) and as the local server
+    // `php artisan mcp:start lu-models`. A local server runs as mcp.local_user (an id), else as a guest.
+    'enable_mcp_routes' => false,
+    'mcp' => [
+        'path' => 'mcp/lu-models',
+        'name' => null, // defaults to "{app.name} models"
+        'local_user' => null,
+    ],
 
 ];

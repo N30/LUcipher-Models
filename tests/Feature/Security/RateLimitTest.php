@@ -51,7 +51,7 @@ class RateLimitTest extends TestCase
 
     public function test_the_default_budgets_are_declared_per_transport(): void
     {
-        $this->assertSame(['web' => 120, 'rest' => 120, 'api' => 60, 'spa' => 120, 'writes' => 20], config('lu::models.rate_limits'));
+        $this->assertSame(['web' => 120, 'rest' => 120, 'api' => 60, 'spa' => 120, 'mcp' => 60, 'writes' => 20], config('lu::models.rate_limits'));
         $this->assertContains('throttle:lu-models-web', Route::getRoutes()->getByName('lu::web.resources')->middleware());
         $this->assertContains('throttle:lu-models-writes', Route::getRoutes()->getByName('lu::api.resources.store')->middleware());
         $this->assertNotContains('throttle:lu-models-writes', Route::getRoutes()->getByName('lu::api.resources')->middleware());

@@ -14,7 +14,7 @@ use All1\LuModels\Models\LuModel;
  */
 final class Exposure
 {
-    public const TRANSPORTS = ['web', 'rest', 'api', 'spa'];
+    public const TRANSPORTS = ['web', 'rest', 'api', 'spa', 'mcp'];
 
     public static function isExposed(string|object $model, string $transport): bool
     {
