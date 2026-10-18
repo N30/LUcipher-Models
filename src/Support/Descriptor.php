@@ -5,6 +5,7 @@ namespace All1\LuModels\Support;
 use All1\LuModels\Actions\Action;
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Services\LuModels;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -58,7 +59,8 @@ final class Descriptor implements Arrayable
     {
         $class = ltrim(is_object($model) ? get_class($model) : $model, '\\');
 
-        if (! config('lu::models.descriptor_cache.enabled', true)) {
+        // default off: a container without the package config (plain unit tests) builds every time
+        if (! config('lu::models.descriptor_cache.enabled', false)) {
             return self::build($class);
         }
 
@@ -120,7 +122,8 @@ final class Descriptor implements Arrayable
             }
         }
 
-        $policy = Gate::getPolicyFor($instance);
+        // a bare container (plain unit tests) has no gate and no resource path; a Laravel app always does
+        $policy = app()->bound(\Illuminate\Contracts\Auth\Access\Gate::class) ? Gate::getPolicyFor($instance) : null;
         $relative = implode('\\', array_slice(explode('\\', $class), 2));
         $basename = class_basename($class);
         $friendly = preg_replace('/\B([A-Z])/', ' $1', $basename);
@@ -141,7 +144,7 @@ final class Descriptor implements Arrayable
                 'source' => $app ? 'app' : 'package',
             ];
         }
-        $viewFolder = LuModel::viewFolderFor($instance);
+        $viewFolder = app() instanceof Application ? LuModel::viewFolderFor($instance) : 'lu_models::web';
         $overrides['views'] = ['class' => $viewFolder, 'source' => $viewFolder === 'lu_models::web' ? 'package' : 'app'];
         $overrides['policy'] = ['class' => $policy ? get_class($policy) : '', 'source' => $policy ? 'app' : 'missing'];
 

@@ -11,6 +11,7 @@ use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\Descriptor;
 use All1\LuModels\Support\Exposure;
 use All1\LuModels\Support\FieldVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -125,325 +126,156 @@ class LuModels
         return $columns;
     }
 
+    /** The listing: paginated unless the request asks for a flat `limit`. */
     public function controller_index($model)
     {
         $this->model = $model;
-        $perpage = request()->input('per_page', 15);
-        $filters = request()->input('filters', null);
-        $with = request()->input('with', null);
-        $select = request()->input('select', null);
-        $sort = request()->input('sort', null);
-        $order = request()->input('order', null);
-        $limit = request()->input('limit', null);
-        $page = request()->input('page', null);
-        $search = request()->input('search', null);
-        $search_fields = request()->input('search_fields', $this->model->default_search_columns ?? null);
 
-        // determine method paginate/get
-        if (request()->has('limit')) {
-            $pagination_method = false;
-        } else {
-            $pagination_method = true;
+        return $this->runQuery($model, 'index', null, ! request()->has('limit'));
+    }
+
+    /** One record, by the key the controller already resolved onto $model. */
+    public function controller_show($model)
+    {
+        $this->model = $model;
+        $action = FieldVisibility::normalizeAction($this->controller_data['action'] ?? 'show');
+
+        $data = $this->runQuery($model, $action, fn ($query) => $query->whereKey($model->getKey()), false);
+
+        if ($data->isEmpty()) {
+            abort(404, 'Record not found');
         }
 
-        if ($this->model->default_loaded_relationships) {
-            $default_relationships = $this->model->default_loaded_relationships;
-        } else {
-            // see if method exists
-            if (method_exists($this->model, 'getModelRelationships')) {
-                $default_relationships = $this->model->getModelRelationships();
+        $this->model = $data->first();
+
+        return $data;
+    }
+
+    /**
+     * The one query behind index and show (3.0.x carried two copies that had already drifted):
+     * eager loads from the model's own list or the descriptor's relationships (one level deeper
+     * too), the request's `with`, a search over fields the action may read, an order the request
+     * may set, pagination or a flat `limit`; then visibility on the rows and the column list.
+     *
+     * @param  (callable(Builder): mixed)|null  $scope
+     */
+    protected function runQuery(Model $model, string $read_action, ?callable $scope, bool $paginate)
+    {
+        $request = request();
+        $visibility = FieldVisibility::for($model);
+        $descriptor = Descriptor::for($model);
+
+        $with = $request->input('with');
+        if ($with !== null && ! is_array($with)) {
+            abort(400, 'The with parameter must be an array.');
+        }
+        $default_order = strtolower((string) ($descriptor->options['index_default_order'] ?? 'asc'));
+        $order = strtolower((string) $request->input('order', $default_order));
+        $order = in_array($order, ['asc', 'desc'], true) ? $order : $default_order;
+        $search = $request->input('search');
+        $readable = $visibility->readable(array_keys($descriptor->fields), $read_action);
+        $search_fields = array_values(array_intersect(
+            (array) $request->input('search_fields', $descriptor->options['default_search_columns'] ?: $readable),
+            $readable,
+        ));
+
+        $query = $model->newQuery()->select(['*']);
+
+        foreach ($this->eagerLoads($model, $descriptor) as $relation) {
+            $columns = $model->index_relationships_columns[$relation] ?? ['*'];
+            $query->with([$relation => fn ($q) => $q->select($columns)]);
+        }
+        foreach ((array) $with as $relation) {
+            if ($relation !== null && isset($model->index_relationships_columns[$relation])) {
+                $columns = $model->index_relationships_columns[$relation];
+                $query->with([$relation => fn ($q) => $q->select($columns)]);
+            }
+        }
+
+        if ($search !== null && $search !== '') {
+            if ($search_fields === []) {
+                // the request named only fields this action may not read: nothing matches, nothing leaks
+                $query->whereRaw('1 = 0');
             } else {
-                $default_relationships = [];
-                // get all columns ending in id
-                if (! isset($this->controller_data['columns'])
-                &&
-                count($this->controller_data['columns'])) {
-                    foreach ($this->controller_data['columns'] as $k => $v) {
-                        if (Str::endsWith($v['Field'], '_id')) {
-                            $default_relationships[] = Str::beforeLast($v['Field'], '_id');
-                        }
+                $query->where(function ($q) use ($search, $search_fields) {
+                    foreach ($search_fields as $field) {
+                        $q->orWhere($field, 'LIKE', '%'.$search.'%');
                     }
-                }
-                // /LATER HERE ALSO CHECK ALL TABLE AND LOOK FOR $mode_id on them and look for pivtor tables with name of $model
-                // and accordin create belongs to and belongs to many relationships.
-            }
-            // also include the relationship of those models
-            foreach ($default_relationships as $r) {
-                $model_name = 'App\Models\\'.Str::singular(ucfirst($r));
-                try {
-                    $child_model = new $model_name;
-                    if (method_exists($child_model, 'getModelRelationships')) {
-                        foreach ($child_model->getModelRelationships() as $c) {
-                            $default_relationships[] = $r.'.'.$c;
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Ignore methods that throw errors (non-relationship methods)
-                }
+                });
             }
         }
 
-        if (! is_iterable($with) & $with !== null) {
-            abort(500, 'with parameter must be an array');
-        }
-        // samfe for field
-        // $fields = array_merge($this->model->index_relationships_columns, request()->input('fields', []));
-        if (! isset($_GET['fields'])) {
-            $_GET['fields'] = [];
-        }
-
-        // dd($this->model->index_relationships_columns);
-        // dd(request()->fields);
-
-        $q = $this->model->select(['*']);
-
-        if (isset($this->model->default_loaded_relationships)) {
-            foreach ($this->model->default_loaded_relationships as $i) {
-                $q->with([
-                    $i => function ($query) use ($i) {
-                        // Only select specific columns for the relationship (if needed)
-                        $query->select(isset($this->model->index_relationships_columns[$i]) ? $this->model->index_relationships_columns[$i] : '*');  // Adjust to the columns you want for the related model
-                    },
-                ]);
-            }
-        }
-
-        if ($with !== null) {
-            foreach ($with as $i) {
-                if ($i !== null && isset($this->model->index_relationships_columns[$i])) {
-                    $q->with([
-                        $i => function ($query) use ($i) {
-                            // Only select specific columns for the relationship (if needed)
-                            $query->select($this->model->index_relationships_columns[$i]);  // Adjust to the columns you want for the related model
-                        },
-                    ]);
-                }
-            }
-        }
-
-        // where search term
-        if ($search !== null && $search_fields !== null) {
-            $q->where(function ($query) use ($search, $search_fields) {
-                foreach ($search_fields as $f) {
-                    $query->orWhere($f, 'LIKE', '%'.$search.'%');
-                }
-            });
-        }
-
-        $q->orderBy($this->model->index_default_sort ?? 'id', $order ?? 'ASC');
-        //   dd($this->model->get());
-        // return the records either all or paginated
-        if ($pagination_method) {
-            $data = $q->paginate($perpage);
-            $data->appends([
-                'per_page' => $perpage,
-                'filters' => $filters,
-                'with' => $with,
-                'sort' => $sort,
-                'order' => $order,
-            ]);
+        if ($scope !== null) {
+            $scope($query);
         } else {
-            // return as data
-            $data = $q->get();
+            $query->orderBy($descriptor->options['index_default_sort'] ?? $model->getKeyName(), $order);
         }
 
-        // v3.0.1: an empty table used to 500 here ($data[0] on an empty result).
+        if ($paginate) {
+            $per_page = (int) $request->input('per_page', 15);
+            $data = $query->paginate($per_page > 0 && $per_page <= 200 ? $per_page : 15);
+            $data->appends(array_filter(['per_page' => $request->input('per_page'), 'with' => $with, 'order' => $request->input('order'), 'search' => $search]));
+        } else {
+            $limit = (int) $request->input('limit', 0);
+            $data = ($scope === null && $limit > 0 ? $query->limit($limit) : $query)->get();
+        }
+
         $first = $data->first();
-        $visibility = FieldVisibility::for($this->model);
-        $read_action = $this->controller_data['action'] ?? 'index';
-        if ($first === null) {
-            $this->db_columns = $visibility->readable($this->model->getConnection()->getSchemaBuilder()->getColumnListing($this->model->getTable()), $read_action);
-            $this->filters = [
-                'with' => $with,
-                'sort' => $sort,
-                'order' => $order,
-                'limit' => $limit,
-                'page' => $page,
-                'search' => $search,
-                'search_fields' => $search_fields,
-            ];
-            $this->data = $data;
+        $db_columns = $visibility->readable($first ? array_keys($first->getAttributes()) : array_keys($descriptor->fields), $read_action);
 
-            return $data;
+        foreach ($data as $row) {
+            $row->makeHidden($visibility->hiddenFor($row, $read_action));
         }
 
-        $db_columns = $visibility->readable(array_keys($first->getAttributes()), $read_action);
-
-        // $hidden, hidden_columns and anything $lu_fields keeps from this action never read out
-        foreach ($data as $d) {
-            $d->makeHidden($visibility->hiddenFor($d, $read_action));
-        }
-
-        foreach ($first->getRelations() as $k => $rel) {
-            if (is_iterable($rel) && count($rel) > 0) {
-                foreach ($rel[0]->getAttributes() as $c => $v) {
-                    $db_columns[$k.'.'.$c] = $k.'.'.$c;
-                }
-            } elseif ($rel !== null && method_exists($rel, 'getAttributes')) {
-                foreach ($rel->getAttributes() as $c => $v) {
-                    $db_columns[$k.'.'.$c] = $k.'.'.$c;
+        if ($first) {
+            foreach ($first->getRelations() as $name => $related) {
+                $sample = is_iterable($related) ? (count($related) > 0 ? $related[0] : null) : $related;
+                if ($sample !== null && method_exists($sample, 'getAttributes')) {
+                    foreach (array_keys($sample->getAttributes()) as $column) {
+                        $db_columns[$name.'.'.$column] = $name.'.'.$column;
+                    }
                 }
             }
         }
-        // dd($data[0]->getRelations());
-        $this->db_columns = $db_columns;
 
+        $this->db_columns = $db_columns;
         $this->filters = [
             'with' => $with,
-            'sort' => $sort,
-            'order' => $order,
-            'limit' => $limit,
-            'page' => $page,
+            'sort' => $request->input('sort'),
+            'order' => $request->input('order'),
+            'limit' => $request->input('limit'),
+            'page' => $request->input('page'),
             'search' => $search,
             'search_fields' => $search_fields,
         ];
-
         $this->data = $data;
 
         return $data;
     }
 
-    public function controller_show($model)
+    /**
+     * The relationships to eager load: the model's own $default_loaded_relationships, else every
+     * relationship the descriptor found plus each one's own relationships (one level deeper).
+     *
+     * @return list<string>
+     */
+    protected function eagerLoads(Model $model, Descriptor $descriptor): array
     {
-        $this->model = $model;
-
-        $filters = request()->input('filters', null);
-        $with = request()->input('with', null);
-        $select = request()->input('select', null);
-        $sort = request()->input('sort', null);
-        $order = request()->input('order', null);
-        $limit = request()->input('limit', null);
-        $page = request()->input('page', null);
-        $search = request()->input('search', null);
-        $search_fields = request()->input('search_fields', $this->model->default_search_columns ?? null);
-
-        if ($this->model->default_loaded_relationships) {
-            $default_relationships = $this->model->default_loaded_relationships;
-        } else {
-            // see if method exists
-            if (method_exists($this->model, 'getModelRelationships')) {
-                $default_relationships = $this->model->getModelRelationships();
-            } else {
-                $default_relationships = [];
-                // get all columns ending in id
-                if (! isset($this->controller_data['columns']) && count($this->controller_data['columns'])) {
-                    foreach ($this->controller_data['columns'] as $k => $v) {
-                        if (Str::endsWith($v['Field'], '_id')) {
-                            $default_relationships[] = Str::beforeLast($v['Field'], '_id');
-                        }
-                    }
-                }
-                // /LATER HERE ALSO CHECK ALL TABLE AND LOOK FOR $mode_id on them and look for pivtor tables with name of $model
-                // and accordin create belongs to and belongs to many relationships.
-            }
-            // also include the relationship of those models
-            foreach ($default_relationships as $r) {
-                $model_name = 'App\Models\\'.Str::singular(ucfirst($r));
-                try {
-                    $child_model = new $model_name;
-                    if (method_exists($child_model, 'getModelRelationships')) {
-                        foreach ($child_model->getModelRelationships() as $c) {
-                            $default_relationships[] = $r.'.'.$c;
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Ignore methods that throw errors (non-relationship methods)
-                }
-            }
-
-            $this->model->default_loaded_relationships = $default_relationships;
+        if (! empty($model->default_loaded_relationships)) {
+            return array_values((array) $model->default_loaded_relationships);
         }
 
-        if (! is_iterable($with) & $with !== null) {
-            abort(500, 'with parameter must be an array');
-        }
-        // samfe for field
-        // $fields = array_merge($this->model->index_relationships_columns, request()->input('fields', []));
-        if (! isset($_GET['fields'])) {
-            $_GET['fields'] = [];
-        }
-
-        // dd($this->model->index_relationships_columns);
-        // dd(request()->fields);
-
-        $q = $this->model->select(['*']);
-
-        if (isset($this->model->default_loaded_relationships)) {
-            foreach ($this->model->default_loaded_relationships as $i) {
-                $q->with([
-                    $i => function ($query) use ($i) {
-                        // Only select specific columns for the relationship (if needed)
-                        $query->select(isset($this->model->index_relationships_columns[$i]) ? $this->model->index_relationships_columns[$i] : '*');  // Adjust to the columns you want for the related model
-                    },
-                ]);
-            }
-        }
-
-        if ($with !== null) {
-            foreach ($with as $i) {
-                if ($i !== null && isset($this->model->index_relationships_columns[$i])) {
-                    $q->with([
-                        $i => function ($query) use ($i) {
-                            // Only select specific columns for the relationship (if needed)
-                            $query->select($this->model->index_relationships_columns[$i]);  // Adjust to the columns you want for the related model
-                        },
-                    ]);
+        $relations = [];
+        foreach ($descriptor->relationships as $name => $related) {
+            $relations[] = $name;
+            if ($related !== null && class_exists($related)) {
+                foreach (array_keys(Descriptor::for($related)->relationships) as $child) {
+                    $relations[] = $name.'.'.$child;
                 }
             }
         }
 
-        // where search term
-        if ($search !== null && $search_fields !== null) {
-            $q->where(function ($query) use ($search, $search_fields) {
-                foreach ($search_fields as $f) {
-                    $query->orWhere($f, 'LIKE', '%'.$search.'%');
-                }
-            });
-        }
-
-        // $q->orderBy($this->model->index_default_sort??'id', $order??'ASC');
-        //   dd($this->model->get());
-        // return the records either all or paginated
-
-        // return as data
-        $data = $q->where('id', $this->model->id)->get();
-
-        $visibility = FieldVisibility::for($this->model);
-        $read_action = FieldVisibility::normalizeAction($this->controller_data['action'] ?? 'show');
-        $db_columns = $visibility->readable(array_keys($data[0]->getAttributes()), $read_action);
-
-        foreach ($data as $d) {
-            $d->makeHidden($visibility->hiddenFor($d, $read_action));
-        }
-
-        foreach ($data[0]->getRelations() as $k => $rel) {
-            if (is_iterable($rel) && count($rel) > 0) {
-                foreach ($rel[0]->getAttributes() as $c => $v) {
-                    $db_columns[$k.'.'.$c] = $k.'.'.$c;
-                }
-            } elseif ($rel !== null && method_exists($rel, 'getAttributes')) {
-                foreach ($rel->getAttributes() as $c => $v) {
-                    $db_columns[$k.'.'.$c] = $k.'.'.$c;
-                }
-            }
-        }
-        // dd($data[0]->getRelations());
-        $this->db_columns = $db_columns;
-
-        $this->filters = [
-            'with' => $with,
-            'sort' => $sort,
-            'order' => $order,
-            'limit' => $limit,
-            'page' => $page,
-            'search' => $search,
-            'search_fields' => $search_fields,
-        ];
-
-        $this->data = $data;
-        $this->model = $data[0];
-
-        return $data;
+        return $relations;
     }
 
     // LETS MOVE THAT STUFF FROM RAZOR HERE SEE BELOW FUNCTIONS menu_*

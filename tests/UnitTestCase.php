@@ -75,6 +75,8 @@ abstract class UnitTestCase extends BaseTestCase
         $capsule->setEventDispatcher($app->make('events'));
         $capsule->setAsGlobal();
         $capsule->bootEloquent();
+        // the Schema facade and anything else that asks the container for the database
+        $app->instance('db', $capsule->getDatabaseManager());
 
         $capsule->schema()->create('widgets', function ($table) {
             $table->increments('id');
