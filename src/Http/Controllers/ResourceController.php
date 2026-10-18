@@ -15,8 +15,9 @@ class ResourceController extends ApiResourceController
     {
         
          
+        $this->guardMethod($request);
         $method = $request->method();
-        if($method=='GET') {
+        if($method=='GET' || $method=='HEAD') {
             return $this->chooseView( $this->{$this->action}($id));
         }else {
             

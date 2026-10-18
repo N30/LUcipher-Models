@@ -18,7 +18,6 @@
 
         <form wire:submit='beforeStore' action="{{ route('lu::web.resources', [$route_prefix, 'store']) }}" method="POST">
             @csrf
-            @method('PUT')
 
             @foreach ($columns as $c)
                 

@@ -13,12 +13,14 @@
 //Route::middleware(['auth'])->group(function () {
 if(config('lu::models.enable_web_routes')) {
     Route::middleware(config('lu::models.web_middleware'))->group(function () {
-        Route::any('web/{model}/{action?}/{id?}', \All1\LuModels\Http\Controllers\ResourceController::class)->name('lu::web.resources');
+        //v3.0.1: method-scoped. GET index/create/show/edit, POST store, PUT|PATCH update, DELETE destroy
+        //(3.0.0 used Route::any, so GET web/{model}/destroy/{id} deleted the row past CSRF).
+        \All1\LuModels\Routing\ResourceRoutes::register('web', \All1\LuModels\Http\Controllers\ResourceController::class, 'lu::web.resources');
     });
 }
 if(config('lu::models.enable_rest_routes')) {
 Route::middleware(['auth',/***** enforced as REST is just for developers and admin ******/'web'])->group(function () {
-    Route::any('rest/{model}/{action?}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiRestController::class)->name('lu::rest.resources');
+    \All1\LuModels\Routing\ResourceRoutes::register('rest', \All1\LuModels\Http\Controllers\Api\ApiRestController::class, 'lu::rest.resources');
 });
 }
 if(config('lu::models.enable_api_routes')) {
@@ -26,7 +28,7 @@ if(config('lu::models.enable_api_routes')) {
         Route::prefix('api')
         ->middleware(['api', 'auth:sanctum'])
         ->group(function () {
-                Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
+                \All1\LuModels\Routing\ResourceRoutes::register('', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class, 'lu::api.resources', false);
         
         });
     } else {
@@ -35,7 +37,7 @@ if(config('lu::models.enable_api_routes')) {
         if (config('lu::models.allow_unauthenticated_api')) {
             Route::prefix('api')->middleware('api')->group( function() {
                 \Log::warning('lu_models: auth:sanctum middleware not found — API resource routes are UNAUTHENTICATED (lu::models.allow_unauthenticated_api enabled)');
-                Route::any('{model}/{action}/{id?}', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class)->name('lu::api.resources');
+                \All1\LuModels\Routing\ResourceRoutes::register('', \All1\LuModels\Http\Controllers\Api\ApiResourceController::class, 'lu::api.resources', false);
             });
         } else {
             \Log::warning('lu_models: auth:sanctum middleware not found — API resource routes NOT registered (set lu::models.allow_unauthenticated_api to override)');

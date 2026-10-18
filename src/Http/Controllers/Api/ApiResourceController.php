@@ -59,14 +59,21 @@ class ApiResourceController
        // dd("TEST");
        //get this route name
         
-       $method = $request->method();
-        
-       if($method=='GET') {
-            $methodName = $action;
-       }else {
-            $methodName = strtolower($method).ucfirst($action);  //used to have underline between
-       }
+        $this->guardMethod($request);
         return ($this->{$this->action}($id));
+    }
+
+    /**
+     * v3.0.1: refuse an action reached through the wrong HTTP method (e.g. GET .../destroy/5),
+     * and any path segment that is not one of the seven resource actions. The routes are
+     * method-scoped already (All1\LuModels\Routing\ResourceRoutes); this keeps an app that
+     * points its own Route::any at these controllers from reopening the hole.
+     */
+    protected function guardMethod(Request $request): void
+    {
+        if (! \All1\LuModels\Routing\ResourceRoutes::allows($request->method(), $this->action)) {
+            abort(405, 'The '.$request->method().' method is not allowed for the '.$this->action.' action.');
+        }
     }
 
 
