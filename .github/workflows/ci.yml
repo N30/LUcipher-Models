@@ -61,6 +61,13 @@ jobs:
           coverage: ${{ matrix.coverage && 'pcov' || 'none' }}
       - name: Pin the framework line
         run: composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update --dev
+      # Laravel 11 stopped receiving security fixes in March 2026, so every 11.x release carries
+      # advisories and Composer >= 2.10 refuses to install it. The package itself is not affected;
+      # the block is lifted for this cell only, to keep testing the ^11 constraint the package still
+      # declares. Whether to drop Laravel 11 in 4.0 is an open question for the owner.
+      - name: Allow the end-of-life Laravel 11 line (advisories are the app's, not the package's)
+        if: matrix.laravel == '11.*'
+        run: composer config policy.advisories.block false
       - name: Install
         run: composer update --prefer-dist --no-progress --no-interaction
       - name: No private dependency is installed
