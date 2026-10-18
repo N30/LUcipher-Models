@@ -106,6 +106,38 @@ namespace {
         }
     }
 
+    if (! function_exists('session')) {
+        function session($key = null, $default = null)
+        {
+            $session = Container::getInstance()->make('session');
+
+            return $key === null ? $session : $session->get($key, $default);
+        }
+    }
+
+    if (! function_exists('redirect')) {
+        function redirect($to = null, $status = 302, $headers = [], $secure = null)
+        {
+            $redirector = Container::getInstance()->make('redirect');
+
+            return $to === null ? $redirector : $redirector->to($to, $status, $headers, $secure);
+        }
+    }
+
+    if (! function_exists('back')) {
+        function back($status = 302, $headers = [], $fallback = false)
+        {
+            return Container::getInstance()->make('redirect')->back($status, $headers, $fallback);
+        }
+    }
+
+    if (! function_exists('auth')) {
+        function auth($guard = null)
+        {
+            return Container::getInstance()->make('auth');
+        }
+    }
+
     foreach ([
         'Str' => \Illuminate\Support\Str::class,
         'Route' => \Illuminate\Support\Facades\Route::class,

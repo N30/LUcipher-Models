@@ -77,6 +77,23 @@ class ApiResourceController
     }
 
 
+    /**
+     * v3.0.1: the record a write action produced. The package Verbs return the service (its
+     * ->model is the record); an app's own Action or Verb override may still return the model
+     * itself. Anything else falls back to the model the controller looked up.
+     */
+    public static function recordOf($result, $fallback = null)
+    {
+        if ($result instanceof \Illuminate\Database\Eloquent\Model) {
+            return $result;
+        }
+        if (is_object($result) && isset($result->model) && $result->model instanceof \Illuminate\Database\Eloquent\Model) {
+            return $result->model;
+        }
+
+        return $fallback;
+    }
+
     public function create() {
         //nothing for API other controller types will override
     }
@@ -231,7 +248,8 @@ class ApiResourceController
             $data = \All1\LuModels\Services\LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type );
         }
 
-        return ['message' => 'Record updated', 'data' => $data ];
+        //v3.0.1: the Verbs now return the service; 'data' stays the updated model, as in 3.0.0.
+        return ['message' => 'Record updated', 'data' => self::recordOf($data, $obj) ];
     }
 
     public function destroy($id)
@@ -252,7 +270,8 @@ class ApiResourceController
             } else {
                 $data = \All1\LuModels\Services\LuModels::fromData('delete', $this->service, $obj, request()->except(['_token', '_method']), $this->controller_type );
             }
-            return ['message' => 'Record deleted', 'data' => $data ];
+            //v3.0.1: 'data' is the deleted model (3.0.0 fataled before reaching here).
+            return ['message' => 'Record deleted', 'data' => self::recordOf($data, $obj) ];
         
     }
 }

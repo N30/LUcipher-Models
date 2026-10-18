@@ -12,14 +12,18 @@
 - The five Verbs share an abstract `Verb` base with one constructor: `$service` is always assigned (delete no longer fatals), every `handle()` returns the service (update returned the model), properties are declared (no PHP 8.2 dynamic-property deprecations).
 - The app Event override is looked up by the model's name, `App\Events\{action_folder}\{Model}{Created|Updated|Deleted|Read|Index}` (3.0.0 used the Verb's name, e.g. `CreationCreated`).
 - Index on an empty table no longer 500s on `$data[0]`; it returns an empty result with the table's columns.
+- Web update and destroy redirect again: `ResourceController` read `$result['data']->id`, which became a 500 ("Undefined property LuModels::$id") once the Verbs returned the service; it now takes the id from the record (and redirects through the transport's GET route name), including on "Record not found".
 
 ### Upgrade notes
 - The shipped create forms now submit `store` as `POST` (they sent `PUT`); a published copy of `web/create` or `rest/create` that still sends `@method('PUT')` must drop it.
 - The write routes are named `{name}.store`, `{name}.update` and `{name}.destroy` beside the existing GET name (e.g. `lu::web.resources`); `route('lu::web.resources', [...])` still generates every action's URL.
 - A model that relied on the unguarded update path must now opt out explicitly with `public $update_safety = false;`.
+- Models without `$fillable` now throw `MassAssignmentException` on update, as a `LuModel` already did on create in 3.0.0: `LuModel` declares neither `$fillable` nor `$guarded`, so Eloquent's default `$guarded = ['*']` applies. Declare `$fillable`, or set `public $update_safety = false;` to keep 3.0.0's write-every-key update. A plain Eloquent model (no safety flags) now goes through `$fillable` on create and update too; it opts out with `$creation_safety = false` / `$update_safety = false`.
+- API responses: `PUT …/update/{id}` still returns the updated model in `data` (as in 3.0.0); `DELETE …/destroy/{id}`, which fataled in 3.0.0, returns the deleted model in `data`. `POST …/store` is unchanged (`data` is the service, `id` the encrypted key).
 
 ### Tests
 - Class-level suite for every fix above (`illuminate/routing`, `illuminate/events` and `illuminate/config` added as dev dependencies; `tests/bootstrap.php` supplies the framework helpers for the test run only).
+- The web and API write actions are driven through the controllers past the method guard, with warnings turned into exceptions as Laravel does, so a 500 after a successful write fails the suite.
 
 ## 3.0.0 (2026-08-04)
 
