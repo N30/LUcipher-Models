@@ -244,7 +244,7 @@ class LuModel extends Model
 
     public function viewFolder()
     {
-        $potential_folder = strtolower(Str::plural(class_basename($this->model)));
+        $potential_folder = strtolower(Str::plural(class_basename($this)));
         if (File::exists(resource_path('views/'.$potential_folder))) {
             $folder = $potential_folder;
         } else {

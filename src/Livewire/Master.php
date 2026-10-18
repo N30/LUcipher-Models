@@ -76,11 +76,11 @@ class Master extends Component
 
         $service = new LuModels;
         // dd($this->model_full_namespace);
-        $this->service = LuModels::fromData('index', $service, new $this->model_full_namespace, request()->all(), $this->controller_type);
-        $data = $this->service->data;
-        $this->filters = $this->service->filters;
-        $this->db_columns = $this->service->db_columns;
-        $this->model = $this->service->model;
+        $service = LuModels::fromData('index', $service, new $this->model_full_namespace, request()->all(), $this->controller_type);
+        $data = $service->data;
+        $this->filters = $service->filters;
+        $this->db_columns = $service->db_columns;
+        $this->model = $service->model;
         foreach (array_values($this->db_columns) as $v) {
             if (! isset($this->model_attributes[$v])) {
                 $this->model_attributes[$v] = '';

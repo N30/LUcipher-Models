@@ -8,6 +8,16 @@ use Illuminate\View\Component;
 
 class IndexTable extends Component
 {
+    public $data;
+
+    public $type;
+
+    public $dbColumns;
+
+    public $route_prefix;
+
+    public $livewire;
+
     /**
      * Create a new component instance.
      */

@@ -57,8 +57,6 @@ class ApiResourceController
         $this->model_name = $controller_data['model_name'];
         $this->meta = $controller_data['meta'];
         $this->columns = $controller_data['columns'];
-
-        return false;
     }
 
     /**

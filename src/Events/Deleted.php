@@ -32,5 +32,9 @@ class Deleted
      *
      * @return array<int, Channel>
      */
-    public function broadcastOn(): array {}
+    public function broadcastOn(): array
+    {
+        // Phase 4 (study §5.10) gives these events real channels; until then nothing is broadcast.
+        return [];
+    }
 }

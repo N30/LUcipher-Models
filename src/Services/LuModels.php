@@ -545,7 +545,7 @@ class LuModels
         }
         if ($config_access) {
             // make surce the model is just not set and is the default empty array
-            if (! isset($public_pages) || $public_pages == []) {
+            if ($public_pages == []) {
                 return true;
             }
         }
@@ -562,7 +562,7 @@ class LuModels
             return true;
         }
         $is_public = LuModels::can_public_access_model_for($model, $action);
-        $policy_access = auth()->check() && auth()->user()->can($action, $model, $data, $controller_type);
+        $policy_access = auth()->check() && auth()->user()->can($action, [$model, $data, $controller_type]);
         // dd("ADASDS",$action);
         if (! $is_public && ! $policy_access) {
             abort(403, 'Unauthorized! '.(auth()->check() ? 'Your Account' : 'The Public').' does not have permission to '.$action.
