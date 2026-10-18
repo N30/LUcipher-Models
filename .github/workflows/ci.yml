@@ -1,25 +1,128 @@
 name: CI
 
-# Lint-only in CI: this package requires lucipher/unite, which lives in a private
-# repo (github.com/N30/LUcipher) and is resolved locally via a ../lu_unite path repo.
-# Run the full suite locally with: composer install && composer test
-
 on:
   push:
-    branches: [master, main, 2.x]
+    branches: [master, main, 2.x, 'claude/**', 'fix/**', 'feat/**', 'release/**']
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    outputs:
+      unite: ${{ steps.check.outputs.unite }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-publish --no-check-lock
+      - name: PHP syntax check
+        run: find src config routes database tests -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+      - name: Can the private dependency be checked out?
+        id: check
+        env:
+          TOKEN: ${{ secrets.LU_UNITE_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then echo "unite=true" >> "$GITHUB_OUTPUT"; else echo "unite=false" >> "$GITHUB_OUTPUT"; echo "::warning::LU_UNITE_TOKEN is not set — the test matrix and static analysis are skipped until lucipher/unite is optional (phase 2)"; fi
+
+  pint:
+    name: Pint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-      - name: Validate composer.json
-        run: composer validate --no-check-publish
-      - name: PHP syntax check
+          php-version: '8.3'
+          coverage: none
+      - run: composer global require laravel/pint --no-interaction --no-progress
+      - run: ~/.composer/vendor/bin/pint --test
+
+  test:
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }}
+    needs: preflight
+    if: needs.preflight.outputs.unite == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+        laravel: ['11.*', '12.*']
+        include:
+          - laravel: '11.*'
+            testbench: '9.*'
+          - laravel: '12.*'
+            testbench: '10.*'
+          - php: '8.3'
+            laravel: '12.*'
+            coverage: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: lu_models
+      - name: Check out lucipher/unite (private)
+        uses: actions/checkout@v4
+        with:
+          repository: N30/LUcipher
+          token: ${{ secrets.LU_UNITE_TOKEN }}
+          path: lu_unite
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, sqlite3, mbstring, intl
+          coverage: ${{ matrix.coverage && 'pcov' || 'none' }}
+      - name: Pin the framework line
+        working-directory: lu_models
+        run: composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update --dev
+      - name: Install
+        working-directory: lu_models
+        run: composer update --prefer-dist --no-progress --no-interaction
+      - name: Tests
+        if: ${{ !matrix.coverage }}
+        working-directory: lu_models
+        run: vendor/bin/phpunit
+      - name: Tests with coverage
+        if: ${{ matrix.coverage }}
+        working-directory: lu_models
         run: |
-          set -e
-          find src config routes database tests -name '*.php' -print0 2>/dev/null | xargs -0 -n1 php -l
+          mkdir -p build/coverage
+          vendor/bin/phpunit --coverage-clover build/coverage/clover.xml --coverage-html build/coverage/html --coverage-text
+          php tools/ci/coverage-floor.php build/coverage/clover.xml "$(cat .coverage-floor)"
+      - name: Upload coverage report
+        if: ${{ matrix.coverage }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lu_models/build/coverage
+          retention-days: 14
+
+  larastan:
+    name: Larastan
+    needs: preflight
+    if: needs.preflight.outputs.unite == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: lu_models
+      - uses: actions/checkout@v4
+        with:
+          repository: N30/LUcipher
+          token: ${{ secrets.LU_UNITE_TOKEN }}
+          path: lu_unite
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Install
+        working-directory: lu_models
+        run: composer update --prefer-dist --no-progress --no-interaction
+      - name: Analyse
+        working-directory: lu_models
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
