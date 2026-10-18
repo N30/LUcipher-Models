@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Str;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 // use \All1\LuModels\Services\LuModels;
@@ -246,13 +246,7 @@ class ApiResourceController
             abort(404, 'Record not found');
         }
 
-        if (method_exists($this->model, 'readFromData')) {
-
-            $this->service = $this->model->fromData('read', request()->except(['_token', '_method']));
-
-        } else {
-            $this->service = LuModels::fromData('read', $this->service, $this->model, request()->all(), $this->controller_type);
-        }
+        $this->service = LuModels::fromData('read', $this->service, $this->model, request()->all(), $this->controller_type);
         $this->model = $this->service->model;
 
         return $this->model;
@@ -308,12 +302,7 @@ class ApiResourceController
 
         // dd($validated);
         // pass data and controller_type web, api, spa, etc.... (for record keeping)
-        $model_copy_since_method_exist_is_mutating_it = $this->model;
-        if (method_exists($this->model, 'createFromData')) {
-            $data = $this->model->fromData('create', $this->service, $data, $this->controller_type);
-        } else {
-            $data = LuModels::fromData('create', $this->service, $model_copy_since_method_exist_is_mutating_it, $data, $this->controller_type);
-        }
+        $data = LuModels::fromData('create', $this->service, $this->model, $data, $this->controller_type);
         // the record the write produced (an app override may return the model itself)
         $record = self::recordOf($data);
 
@@ -336,11 +325,7 @@ class ApiResourceController
             return Result::invalid($validator);
         }
 
-        if (method_exists($obj, 'updateFromData')) {
-            $data = $obj->fromData('update', $data);
-        } else {
-            $data = LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type);
-        }
+        $data = LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type);
 
         $record = self::recordOf($data, $obj);
 
@@ -360,11 +345,7 @@ class ApiResourceController
         // if not abort
         // if yes delete
 
-        if (method_exists($obj, 'deleteFromData')) {
-            $data = $obj->fromData('delete', request()->except(['_token', '_method']));
-        } else {
-            $data = LuModels::fromData('delete', $this->service, $obj, request()->except(['_token', '_method']), $this->controller_type);
-        }
+        $data = LuModels::fromData('delete', $this->service, $obj, request()->except(['_token', '_method']), $this->controller_type);
 
         $record = self::recordOf($data, $obj);
 

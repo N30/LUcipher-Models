@@ -1,0 +1,5 @@
+# Read by Larastan (through Testbench) so the package's own provider boots during static analysis
+# and the `lu_models::` view namespace resolves. The PHPUnit suite does not read this file: the
+# test case registers the provider itself (tests/TestCase.php).
+providers:
+  - All1\LuModels\Providers\LuModelsServiceProvider

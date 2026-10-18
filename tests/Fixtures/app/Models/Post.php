@@ -5,6 +5,13 @@ namespace App\Models;
 use All1\LuModels\Models\LuModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $title
+ * @property string|null $body
+ * @property string|null $secret_token
+ */
 class Post extends LuModel
 {
     protected $fillable = ['user_id', 'title', 'body'];

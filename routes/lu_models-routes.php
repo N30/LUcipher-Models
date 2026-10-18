@@ -7,16 +7,9 @@ use All1\LuModels\Livewire\Master;
 use All1\LuModels\Providers\LuModelsServiceProvider;
 use All1\LuModels\Routing\ResourceRoutes;
 use Illuminate\Routing\Router;
-
-// use All1\LuModels\Http\Controllers\LuModelsController;
-
-// Route::get('/lu_models', [LuModelsController::class, 'index'])->name('lu_models.index');
-// Route::get('/lu_models/create', [LuModelsController::class, 'create'])->name('lu_models.create');
-// Route::post('/lu_models', [LuModelsController::class, 'store'])->name('lu_models.store');
-// Route::get('/lu_models/{lu_model}', [LuModelsController::class, 'show'])->name('lu_models.show');
-// Route::get('/lu_models/{lu_model}/edit', [LuModelsController::class, 'edit'])->name('lu_models.edit');
-// Route::put('/lu_models/{lu_model}', [LuModelsController::class, 'update'])->name('lu_models.update');
-// Route::delete('/lu_models/{lu_model}', [LuModelsController::class, 'destroy'])->name('lu_models.destroy');
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 
 // Route::middleware(['auth'])->group(function () {
 if (config('lu::models.enable_web_routes')) {

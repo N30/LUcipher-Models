@@ -6,7 +6,7 @@ use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\FieldVisibility;
 use Illuminate\Http\Request;
-use Str;
+use Illuminate\Support\Str;
 
 class ResourceController extends ApiResourceController
 {

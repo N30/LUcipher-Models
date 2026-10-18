@@ -6,9 +6,9 @@ use All1\LuModels\Services\LuModels;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use ReflectionClass;
 use ReflectionMethod;
-use Str;
 
 class LuModel extends Model
 {

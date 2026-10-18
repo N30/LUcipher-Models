@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
-use Str;
+use Illuminate\Support\Str;
 
 class LuModels
 {
@@ -276,36 +276,6 @@ class LuModels
         }
 
         return $relations;
-    }
-
-    // LETS MOVE THAT STUFF FROM RAZOR HERE SEE BELOW FUNCTIONS menu_*
-
-    public static function menu_lu_models()
-    {
-        return self::make_menu(self::lu_mode_structure_helper(LuModel::getLuModels()));
-    }
-
-    public static function menu_non_lu_models()
-    {
-        return self::make_menu(self::lu_mode_structure_helper(LuModel::getNonLuModels()));
-    }
-
-    public static function menu_models()
-    {
-        return self::make_menu(self::lu_mode_structure_helper(LuModel::getModels()));
-    }
-
-    public static function menu_structure_helper($iterable)
-    {
-        return $iterable; // this is all to have control later if needed
-    }
-
-    public static function menu_make($iterable)
-    {
-        // return rendered view
-        $html = view('lu_razor::'.self::getUI().'.menu', ['iterable' => $iterable])->render();
-
-        return $html;
     }
 
     public static function fromData($action, $service, $model, $data, $controller_type)

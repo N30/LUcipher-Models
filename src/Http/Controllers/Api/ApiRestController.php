@@ -3,7 +3,7 @@
 namespace All1\LuModels\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
-use Str;
+use Illuminate\Support\Str;
 
 class ApiRestController extends ApiResourceController
 {
