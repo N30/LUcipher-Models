@@ -14,7 +14,7 @@ and *name the hop for what it does*.
 | Tests | 3 tests, 10 assertions, green. Plain PHPUnit, no Laravel container, no database; nothing exercises `fromData`, an Action, a Verb, a route or a view. |
 | Coverage of `src/` | 0.53 % lines (4 / 760), 1 / 84 methods, 0 / 27 classes. |
 | Pint (laravel preset, `--test`) | 32 of 32 PHP files would change — every file under `src/`, `tests/`, `config/`, `routes/`, `database/`. |
-| PHPStan (plain; Larastan needs a bootable app, which arrives with Testbench) | level 0: 205 errors in 26 files; level 5: 225; level 8: 503. Roughly 110 of the level-0 errors are framework symbols the package does not install (`request()`, `view()`, `auth()`, `event()`, `abort()`, `redirect()`, `session()`, the `Str` / `Validator` aliases, `Illuminate\Http\Request`) and disappear once `laravel/framework` is a dev dependency; the rest are real — 16 undefined (dynamic) properties, 5 `broadcastOn()` bodies with no return, unknown-class calls. |
+| PHPStan / Larastan | Plain PHPStan without the framework: level 0 → 205 errors in 26 files, level 5 → 225, level 8 → 503. Larastan 3.13 with Testbench + Laravel 12 installed (the honest number): level 0 → 29 errors in 11 files, level 1 → 64, level 2 → 70, level 5 → 76 in 17 files, level 6 → 334. **Decision: level 5 with a `phpstan-baseline.neon` burned down phase by phase**, most of it sits in code phases 2–4 rewrite (dynamic properties, `broadcastOn()` bodies with no return, the `Str` alias, `fromData()` on a class-string). Plain-PHPStan detail: Roughly 110 of the level-0 errors are framework symbols the package does not install (`request()`, `view()`, `auth()`, `event()`, `abort()`, `redirect()`, `session()`, the `Str` / `Validator` aliases, `Illuminate\Http\Request`) and disappear once `laravel/framework` is a dev dependency; the rest are real — 16 undefined (dynamic) properties, 5 `broadcastOn()` bodies with no return, unknown-class calls. |
 | CI | lint-only: `composer validate` + `php -l`. The suite does not run in CI because `lucipher/unite` is a private path repo. |
 
 ## What phase 1 delivers
@@ -72,6 +72,48 @@ that boots the provider, hits a route and reads the database. The CI matrix is w
   Composer installs here run from source (`git clone`), and pcov was built from source into the
   scratchpad. None of this affects CI, which has normal network access.
 - `use-github-api: false` is set globally in this sandbox's Composer config. It is not committed.
+
+## Findings while building the harness (scratchpad copy, 2026-10-18)
+
+The harness was built on a copy of the tree in the session scratchpad so nothing landed in the
+repository before `fix/3.0.1-security` exists. What it found, beyond the study:
+
+1. **Livewire is a third undeclared dependency.** Registering the `/spa` route autoloads
+   `Livewire\Master`, which extends `Livewire\Component`; without Livewire the provider cannot
+   boot at all (`Class "Livewire\Component" not found` at `routes/lu_models-routes.php:48`).
+2. **The blades are written against Flux Pro.** 22 `<flux:*>` tags, among them `flux:table`
+   (+ `.columns/.column/.row/.cell`) and `flux:date-picker`, which are Pro-only. The package cannot
+   require a paid, private-repository UI kit; phase 5 ships a plain Blade/Tailwind default theme and
+   keeps Flux as an optional theme. 🔴 question for Neo below.
+3. **unite's provider helper assumes the n30 directory layout.** `lu_addon_provider_register/boot`
+   build the config and view paths as `__DIR__.'/../../../lu_models/…'` from *inside the unite
+   package*, so this package only boots when its checkout is literally named `lu_models` and sits
+   beside `lu_unite`. Under Composer's `vendor/lucipher/models` layout the config merge `require`s a
+   missing file and fatals. This is why it worked on Neo's machine and nowhere else, and it is the
+   strongest argument for phase 2 (the package registers its own config/views/components by its own
+   `__DIR__`). The harness works around it with a `lu_models` symlink beside a real copy of unite.
+4. **The class-based Blade components are never used.** unite registers the component namespace
+   under the alias `models` (`Blade::componentNamespace(…, $app_name)`), while every blade writes
+   `<x-lu_models::…>`. Blade therefore resolves the tags as *anonymous* components from the view
+   namespace; `index.blade.php:27` passes `:dbColumns` which the class would map to `$db_columns`,
+   the anonymous view sees `$dbColumns`, and **index with rows 500s** with `Undefined variable
+   $db_columns`. Index on an empty table 500s earlier (`$data[0]`, study §3). So the index page has
+   never rendered through this provider on any table, empty or not.
+5. **`SHOW FULL COLUMNS` blocks every controller test on SQLite.** It is the first statement in
+   `controller_initialize()`. The portable replacement (`Schema::getColumns()` + `getIndexes()`,
+   mapped back to the `Field/Type/Null/Key/Default/Extra/Comment` shape the blades read) is
+   written and verified in the scratch copy and is the first `src/` change after the merge; it is
+   half of study §5.8 pulled forward because the harness needs it.
+6. **The characterization suite reproduces the study's live bugs on SQLite** (11 tests, 7 red):
+   `GET …/destroy/{id}` deletes the row; `PUT …/update/{id}` writes `secret_token` past
+   `$fillable`; `post.created` and `post.deleted` never fire (`post.updated` fires for everything);
+   `DELETE` removes the row and then fatals at `Verbs/Deletion.php:38` (`$this->service` null);
+   index 500s empty and non-empty. These tests go into the repo with phase 1 and are the
+   failing-then-passing proof for the `fix/3.0.1-security` review.
+
+Dev dependencies the harness needed to boot the shipped code as-is: `orchestra/testbench`,
+`livewire/livewire ^4`, `lorisleiva/laravel-actions ^2`, `hirethunk/verbs`. They are dev-only in
+phase 1; phases 2 and 4 decide what the package actually requires.
 
 ## Baseline tooling
 
