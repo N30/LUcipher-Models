@@ -13,7 +13,7 @@ class ResourceController extends ApiResourceController
     public function __invoke(Request $request, $model = null, $action = 'index', $id = null)
     {
 
-        $this->guardMethod($request);
+        $this->prepare($request);
         $method = $request->method();
         if ($method == 'GET' || $method == 'HEAD') {
             return $this->chooseView($this->{$this->action}($id));

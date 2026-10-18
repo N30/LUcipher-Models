@@ -528,7 +528,12 @@ class LuModels
         $public_pages = $model->public_pages ?? [];
         $config_access = false;
         $model_definition_access = false;
-        $lu_config_public_models = config('lu::models.public_'.$action.'_models');
+        // the config keys are index/create/read/update/delete while the read action is called "show"
+        $config_key = $action === 'show' ? 'read' : $action;
+        $lu_config_public_models = array_merge(
+            (array) config('lu::models.public_'.$config_key.'_models', []),
+            $config_key === $action ? [] : (array) config('lu::models.public_'.$action.'_models', []),
+        );
 
         // get clean class name without any starting backslashes
         $clean_class_name = ltrim(get_class($model), '\\');

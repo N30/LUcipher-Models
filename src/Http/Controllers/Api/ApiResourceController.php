@@ -47,19 +47,48 @@ class ApiResourceController
 
     */
 
+    public $force_model;
+
+    /** spl_object_id() of the request this instance was initialized for; another request re-initializes. */
+    protected ?int $initializedForRequest = null;
+
     public function __construct($force_model = null)
     {
-        $model = request()->route('model') ?? $force_model;
+        $this->force_model = $force_model;
+        $this->initialize();
+    }
+
+    /**
+     * Read the current request: which model, which action, which transport, and the model's schema.
+     * Runs in the constructor and again from prepare() when a different request reaches a cached
+     * instance (Laravel caches controllers on the Route object, so feature tests that send several
+     * requests and long-running workers hit the same instance).
+     */
+    protected function initialize(): void
+    {
+        $model = request()->route('model') ?? $this->force_model;
         $this->controller_type = explode('.', Str::after(request()->route()->getName(), 'lu::'))[0];
-        // $input = explode('/', request()->path());
         $this->service = new LuModels;
         $controller_data = $this->service->controller_initialize($this->controller_type, $model);
         $this->model = $this->service->model;
         $this->route_prefix = $controller_data['route_prefix'];
-        $this->action = request()->route('action') ?? 'index'; // isset($input[2])? $input[2] : 'index';
+        $this->action = request()->route('action') ?? 'index';
         $this->model_name = $controller_data['model_name'];
         $this->meta = $controller_data['meta'];
         $this->columns = $controller_data['columns'];
+        $this->filters = [];
+        $this->db_columns = null;
+        $this->initializedForRequest = spl_object_id(request());
+    }
+
+    /** Re-initialize for a new request if needed, then refuse a mismatched HTTP method. */
+    protected function prepare(Request $request): void
+    {
+        if ($this->initializedForRequest !== null && $this->initializedForRequest !== spl_object_id($request)) {
+            $this->initialize();
+        }
+
+        $this->guardMethod($request);
     }
 
     /**
@@ -73,7 +102,7 @@ class ApiResourceController
     /** Guard the HTTP method, run the action and hand back its raw result: the data for reads, an array for writes. */
     protected function runAction(Request $request, $id)
     {
-        $this->guardMethod($request);
+        $this->prepare($request);
 
         return $this->{$this->action}($id);
     }
@@ -200,6 +229,9 @@ class ApiResourceController
         } else {
             $this->model = $this->model->find($id);
         }
+        if (! $this->model) {
+            abort(404, 'Record not found');
+        }
 
         $this->service = LuModels::fromData('read', $this->service, $this->model, request()->all(), $this->controller_type);
         $this->model = $this->service->model;
@@ -218,7 +250,10 @@ class ApiResourceController
 
     public function edit($id)
     {
-        $this->model = ($this->model->find($id));
+        $this->model = $this->model->find($id);
+        if (! $this->model) {
+            abort(404, 'Record not found');
+        }
 
         if (method_exists($this->model, 'readFromData')) {
 
