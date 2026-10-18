@@ -4,6 +4,7 @@ namespace All1\LuModels\Actions;
 
 use All1\LuModels\Events\Read as ReadEvent;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Descriptor;
 
 /** Show one record: the service's show query, then the Read event. The policy ability is "show". */
 class Read extends Action
@@ -13,6 +14,11 @@ class Read extends Action
     public function name(): string
     {
         return 'show';
+    }
+
+    protected function inputSchema(Descriptor $descriptor): array
+    {
+        return $this->keySchema($descriptor);
     }
 
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels

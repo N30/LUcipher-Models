@@ -4,6 +4,7 @@ namespace All1\LuModels\Actions;
 
 use All1\LuModels\Audit\AuditLogger;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Descriptor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,73 @@ abstract class Action
 
     /** The state change or query. Returns the service carrying the result. */
     abstract public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels;
+
+    /**
+     * Whether this operation applies to $model: the model is exposed, on $transport when one is given.
+     * Phase 5's OpenAPI document and MCP tools ask this before listing an operation.
+     */
+    public function supports(Descriptor|Model|string $model, ?string $transport = null): bool
+    {
+        $descriptor = $model instanceof Descriptor ? $model : Descriptor::for($model);
+
+        if ($descriptor->transports === []) {
+            return false;
+        }
+
+        return $transport === null || in_array($transport, $descriptor->transports, true);
+    }
+
+    /**
+     * The input this operation accepts for $model, as a JSON Schema (2020-12 subset) object: the
+     * writable fields for a write, the query parameters for a listing, the key for a read or a delete.
+     * Derived from the descriptor, so a column comment becomes a property description and a max:N
+     * rule a maxLength.
+     *
+     * @return array<string, mixed>
+     */
+    public function schema(Descriptor|Model|string $model): array
+    {
+        return $this->inputSchema($model instanceof Descriptor ? $model : Descriptor::for($model));
+    }
+
+    /** @return array<string, mixed> */
+    protected function inputSchema(Descriptor $descriptor): array
+    {
+        return ['type' => 'object', 'properties' => [], 'additionalProperties' => false];
+    }
+
+    /** The schema of a write: the fields the action may write, minus what the package injects. */
+    protected function writeSchema(Descriptor $descriptor, string $formAction, bool $requireNonNullable): array
+    {
+        $properties = [];
+        $required = [];
+        $rules = $descriptor->rules[$formAction === 'create' ? 'create' : 'update'] ?? [];
+
+        foreach ($descriptor->fieldsFor($formAction) as $name => $field) {
+            if (in_array($name, Descriptor::INJECTED, true)) {
+                continue;
+            }
+            $ruleList = Descriptor::ruleList($rules[$name] ?? []);
+            $properties[$name] = Descriptor::jsonSchemaFor($field, $ruleList);
+
+            if (in_array('required', $ruleList, true) || ($requireNonNullable && ! $field['nullable'] && $field['default'] === null && ! $field['auto_increment'])) {
+                $required[] = $name;
+            }
+        }
+
+        return ['type' => 'object', 'properties' => $properties, 'required' => $required, 'additionalProperties' => false];
+    }
+
+    /** The schema of an operation that names one record. */
+    protected function keySchema(Descriptor $descriptor): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [$descriptor->key => ['type' => ['integer', 'string'], 'description' => 'The record key, plain or encrypted']],
+            'required' => [$descriptor->key],
+            'additionalProperties' => false,
+        ];
+    }
 
     /** Static shim with the signature lorisleiva/laravel-actions gave these classes in 3.0.x. */
     public static function run(...$arguments)

@@ -60,6 +60,7 @@ class DescriptorTest extends TestCase
         $this->assertSame(['web', 'rest', 'api', 'spa'], $d->transports);
         $this->assertSame(PostPolicy::class, $d->policy);
         $this->assertSame(['title' => 'required|string|max:120'], $d->rules['create']);
+        $this->assertSame([], $d->rules['update'], 'an update validates only its own rules, as the validator does; store rules do not leak into partial writes');
         $this->assertSame('package', $d->overrides['create']['source']);
         $this->assertSame('All1\LuModels\Actions\Create', $d->overrides['create']['class']);
         $this->assertSame('package', $d->overrides['views']['source']);

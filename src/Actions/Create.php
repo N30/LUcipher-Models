@@ -4,6 +4,7 @@ namespace All1\LuModels\Actions;
 
 use All1\LuModels\Events\Created;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Descriptor;
 
 /** Create a record through create() (respects $fillable) unless the model sets $creation_safety = false. */
 class Create extends Action
@@ -13,6 +14,11 @@ class Create extends Action
     public function name(): string
     {
         return 'create';
+    }
+
+    protected function inputSchema(Descriptor $descriptor): array
+    {
+        return $this->writeSchema($descriptor, 'create', true);
     }
 
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels

@@ -4,6 +4,7 @@ namespace All1\LuModels\Actions;
 
 use All1\LuModels\Events\Updated;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Descriptor;
 
 /** Update a record through update() (respects $fillable) unless the model sets $update_safety = false. */
 class Update extends Action
@@ -13,6 +14,11 @@ class Update extends Action
     public function name(): string
     {
         return 'update';
+    }
+
+    protected function inputSchema(Descriptor $descriptor): array
+    {
+        return $this->writeSchema($descriptor, 'edit', false);
     }
 
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels

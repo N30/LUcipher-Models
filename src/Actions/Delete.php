@@ -4,6 +4,7 @@ namespace All1\LuModels\Actions;
 
 use All1\LuModels\Events\Deleted;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Descriptor;
 
 /** Delete a record. */
 class Delete extends Action
@@ -13,6 +14,11 @@ class Delete extends Action
     public function name(): string
     {
         return 'delete';
+    }
+
+    protected function inputSchema(Descriptor $descriptor): array
+    {
+        return $this->keySchema($descriptor);
     }
 
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels

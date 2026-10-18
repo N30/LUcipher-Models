@@ -26,6 +26,9 @@ final class Descriptor implements Arrayable
 {
     public const ACTIONS = ['index', 'show', 'create', 'edit'];
 
+    /** Columns the package fills itself on a write when the table has them; never client input. */
+    public const INJECTED = ['user_id', 'ip_address', 'user_agent', 'slug'];
+
     private const REGISTRY_KEY = 'lu_models.descriptors';
 
     /**
@@ -161,7 +164,7 @@ final class Descriptor implements Arrayable
             policy: $policy ? get_class($policy) : null,
             rules: [
                 'create' => (array) ($instance->store_validation_rules ?? []),
-                'update' => (array) ($instance->update_validation_rules ?? $instance->store_validation_rules ?? []),
+                'update' => (array) ($instance->update_validation_rules ?? []),
             ],
             overrides: $overrides,
             options: [
@@ -254,6 +257,55 @@ final class Descriptor implements Arrayable
     public static function fromArray(array $data): self
     {
         return new self(...$data);
+    }
+
+    /**
+     * The JSON Schema type (2020-12 subset) of a field, from its column type and nullability, with
+     * the help text as description and the length from the column or a max:N rule.
+     *
+     * @param  array<string, mixed>  $field
+     * @param  array<int, mixed>|string  $rules  A Laravel rule list, `'required|max:120'` or `['required', 'max:120']`
+     * @return array<string, mixed>
+     */
+    public static function jsonSchemaFor(array $field, array|string $rules = []): array
+    {
+        $type = match (strtolower((string) $field['clean_type'])) {
+            'int', 'integer', 'bigint', 'smallint', 'mediumint' => ['type' => 'integer'],
+            'float', 'double', 'decimal', 'numeric', 'real' => ['type' => 'number'],
+            'tinyint', 'boolean', 'bool' => ['type' => 'boolean'],
+            'json', 'jsonb' => ['type' => ['object', 'array']],
+            'date' => ['type' => 'string', 'format' => 'date'],
+            'datetime', 'timestamp' => ['type' => 'string', 'format' => 'date-time'],
+            default => ['type' => 'string'],
+        };
+        if ($field['nullable']) {
+            $type['type'] = [...(array) $type['type'], 'null'];
+        }
+        if ($field['help'] !== '') {
+            $type['description'] = $field['help'];
+        }
+        $max = $field['max_length'];
+        foreach (self::ruleList($rules) as $rule) {
+            if (is_string($rule) && preg_match('/^max:(\d+)$/', $rule, $m)) {
+                $max = (int) $m[1];
+            }
+        }
+        if ($max !== null && in_array('string', (array) $type['type'], true)) {
+            $type['maxLength'] = $max;
+        }
+
+        return $type;
+    }
+
+    /**
+     * A Laravel rule list as an array, whether it was written `'a|b'` or `['a', 'b']`.
+     *
+     * @param  array<int, mixed>|string  $rules
+     * @return array<int, mixed>
+     */
+    public static function ruleList(array|string $rules): array
+    {
+        return is_string($rules) ? explode('|', $rules) : array_values($rules);
     }
 
     private static function inputFor(string $cleanType): string
