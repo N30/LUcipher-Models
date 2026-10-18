@@ -1,6 +1,6 @@
 # Phase 1 — Baseline
 
-**Status:** in progress · **Branch:** `claude/lumodels-production-01cqya` · **Started:** 2026-10-18
+**Status:** done 2026-10-18, see `phase-1-report.md` · **Branch:** `claude/lumodels-production-01cqya` · **Started:** 2026-10-18
 
 Read first: `docs/plans/lu-models-study.md` in `n30/products` (the study). §2 is what we keep,
 §3 the live bugs, §5 the roadmap, §6.6 the two rules: *ship the inspector alongside the magic*

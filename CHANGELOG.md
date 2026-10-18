@@ -1,5 +1,29 @@
 # Changelog — lucipher/models
 
+## Unreleased
+
+### Added
+- Testbench-based feature suite with a fixture app beside the class-level unit suite; `composer test`,
+  `composer coverage`, `composer lint`, `composer analyse` scripts.
+- GitHub Actions CI: preflight, Pint, a PHP 8.2–8.4 × Laravel 11/12 matrix with pcov coverage and a
+  coverage floor, Larastan at level 5 with a baseline.
+
+### Fixed
+- The schema is read through Laravel's schema builder instead of MySQL's `SHOW FULL COLUMNS`, so the
+  package works on SQLite and Postgres.
+- Class-based Blade components are registered under the `lu_models` alias the blades use; the index
+  page rendered nothing before because the components resolved as anonymous ones.
+- The index filters take the model from the controller instead of the first row (empty tables).
+- `authorize()` passes the model, the input and the transport to the policy; `can()` had been dropping
+  the last two.
+- `LuModel::viewFolder()` resolves the app's view folder (it read an undefined property).
+- The five Events' `broadcastOn()` return an empty array instead of nothing.
+- PHP 8.2 dynamic-property deprecations in `IndexTable` and `Livewire\Master`.
+
+### Changed
+- The whole tree is formatted with Pint (laravel preset).
+- `composer.json` no longer carries a `version` field; tags carry the version.
+
 ## 3.0.1 — security and correctness fixes (2026-10-18)
 
 ### Security
