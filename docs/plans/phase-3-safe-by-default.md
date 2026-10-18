@@ -1,6 +1,6 @@
 # Phase 3 — Safe by default
 
-**Status:** planned 2026-10-18 · **Depends on:** phase 2 · **Study:** §2.4 (authorization lives in the
+**Status:** done 2026-10-18, see `phase-3-report.md` · **Depends on:** phase 2 · **Study:** §2.4 (authorization lives in the
 Action), §3 (IDOR, mass assignment), §7 Q6 (default: admin-only).
 
 ## What

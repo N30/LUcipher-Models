@@ -1,6 +1,6 @@
 # Phase 2 — Stand alone
 
-**Status:** planned 2026-10-18 · **Depends on:** phase 1 (done) · **Decides:** study §7 Q1 (default:
+**Status:** done 2026-10-18, see `phase-2-report.md` · **Depends on:** phase 1 (done) · **Decides:** study §7 Q1 (default:
 unite optional).
 
 ## What

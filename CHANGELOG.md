@@ -20,7 +20,25 @@
 - The five Events' `broadcastOn()` return an empty array instead of nothing.
 - PHP 8.2 dynamic-property deprecations in `IndexTable` and `Livewire\Master`.
 
+### Security
+- **Nothing is exposed until a model says so.** A model is reachable on a transport only when listed in
+  `lu::models.models` or declaring `public $lu_transports`; `expose_all` is a development switch. An
+  unexposed model is a 404. A signed-in user on a model without a registered policy is denied (403
+  naming the policy); the super-admin bypass is `lu::models.super_admin_method` (null disables it).
+- **Hidden never reads out, guarded keys are rejected.** `$hidden`, `hidden_columns` and the new
+  per-field `$lu_fields` map are honoured by the service, the blades and the API; a write naming a key the
+  model does not allow written fails validation (422) instead of being dropped; `update()` validates.
+- **Rate limits** per transport and for writes (`lu::models.rate_limits`), via `throttle`.
+- **Audit log** of every create, update and delete (`lu_models_audit`, shipped migration).
+- Regression suites for CSRF, IDOR and mass assignment on every transport.
+
 ### Changed
+- The API transport answers 422 (validation, by field), 404 (missing record) and JSON 200 otherwise.
+- Controllers re-initialize per request; `show`/`edit` 404 for a missing record.
+- Model discovery reads `lu::models.models_path` (default `app_path('Models')`).
+- `web/show` and `web/edit` close their slots; the layout component renders named slots; the edit forms
+  use the package's super-admin check instead of the host app's `isAdmin()`.
+- The two empty 2025 migration stubs are removed; the package loads its own migrations.
 - **`lucipher/unite` is optional.** The provider extends `Illuminate\Support\ServiceProvider` and
   registers config, views, Blade components, the `LuModels` singleton and the routes from its own
   directory, so the package installs from Packagist or any VCS repository and no longer depends on the
