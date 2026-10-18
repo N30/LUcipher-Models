@@ -13,8 +13,6 @@ jobs:
   preflight:
     name: Preflight
     runs-on: ubuntu-latest
-    outputs:
-      unite: ${{ steps.check.outputs.unite }}
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -24,13 +22,7 @@ jobs:
       - name: Validate composer.json
         run: composer validate --strict --no-check-publish --no-check-lock
       - name: PHP syntax check
-        run: find src config routes database tests -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
-      - name: Can the private dependency be checked out?
-        id: check
-        env:
-          TOKEN: ${{ secrets.LU_UNITE_TOKEN }}
-        run: |
-          if [ -n "$TOKEN" ]; then echo "unite=true" >> "$GITHUB_OUTPUT"; else echo "unite=false" >> "$GITHUB_OUTPUT"; echo "::warning::LU_UNITE_TOKEN is not set — the test matrix and static analysis are skipped until lucipher/unite is optional (phase 2)"; fi
+        run: find src config routes database tests tools -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
 
   pint:
     name: Pint
@@ -46,8 +38,6 @@ jobs:
 
   test:
     name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }}
-    needs: preflight
-    if: needs.preflight.outputs.unite == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -64,32 +54,24 @@ jobs:
             coverage: true
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: lu_models
-      - name: Check out lucipher/unite (private)
-        uses: actions/checkout@v4
-        with:
-          repository: N30/LUcipher
-          token: ${{ secrets.LU_UNITE_TOKEN }}
-          path: lu_unite
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: pdo_sqlite, sqlite3, mbstring, intl
           coverage: ${{ matrix.coverage && 'pcov' || 'none' }}
       - name: Pin the framework line
-        working-directory: lu_models
         run: composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update --dev
       - name: Install
-        working-directory: lu_models
         run: composer update --prefer-dist --no-progress --no-interaction
+      - name: No private dependency is installed
+        run: |
+          if composer show lucipher/unite >/dev/null 2>&1; then echo "::error::lucipher/unite must not be a dependency"; exit 1; fi
+          composer show --direct --name-only
       - name: Tests
         if: ${{ !matrix.coverage }}
-        working-directory: lu_models
         run: vendor/bin/phpunit
       - name: Tests with coverage
         if: ${{ matrix.coverage }}
-        working-directory: lu_models
         run: |
           mkdir -p build/coverage
           vendor/bin/phpunit --coverage-clover build/coverage/clover.xml --coverage-html build/coverage/html --coverage-text
@@ -99,30 +81,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: lu_models/build/coverage
+          path: build/coverage
           retention-days: 14
 
   larastan:
     name: Larastan
-    needs: preflight
-    if: needs.preflight.outputs.unite == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: lu_models
-      - uses: actions/checkout@v4
-        with:
-          repository: N30/LUcipher
-          token: ${{ secrets.LU_UNITE_TOKEN }}
-          path: lu_unite
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           coverage: none
       - name: Install
-        working-directory: lu_models
         run: composer update --prefer-dist --no-progress --no-interaction
       - name: Analyse
-        working-directory: lu_models
         run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress

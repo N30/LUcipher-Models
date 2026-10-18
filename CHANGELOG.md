@@ -21,6 +21,16 @@
 - PHP 8.2 dynamic-property deprecations in `IndexTable` and `Livewire\Master`.
 
 ### Changed
+- **`lucipher/unite` is optional.** The provider extends `Illuminate\Support\ServiceProvider` and
+  registers config, views, Blade components, the `LuModels` singleton and the routes from its own
+  directory, so the package installs from Packagist or any VCS repository and no longer depends on the
+  name of its parent folder. A published `config/lu/models.php` is still honoured. The package sets no
+  environment variable. Publish tags: `lu-models-config`, `lu-models-views`.
+- `lorisleiva/laravel-actions` is declared in `require` (the Actions use it). `livewire/livewire`
+  (needed only by the `/spa` transport) and `livewire/flux` (used by the shipped blades) are
+  `suggest`ed; turning `enable_spa_routes` on without Livewire fails with a clear message.
+- `Verb` no longer extends `Thunk\Verbs\Event`: the base class was never fired through and contributed
+  one unused property and an undeclared dependency (`hirethunk/verbs`), which is gone.
 - The whole tree is formatted with Pint (laravel preset).
 - `composer.json` no longer carries a `version` field; tags carry the version.
 

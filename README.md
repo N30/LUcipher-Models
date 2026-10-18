@@ -4,6 +4,20 @@ PUBLISH CONFIG:
 php artisan vendor:publish --provider="All1\LuModels\Providers\LuModelsServiceProvider" --tag="config"
 
 
+## Installation (3.x)
+
+```bash
+composer require lucipher/models
+php artisan vendor:publish --tag=lu-models-config   # config/lu/models.php
+php artisan vendor:publish --tag=lu-models-views    # optional: resources/views/vendor/lu_models
+```
+
+The package has no private dependencies and sets no environment variables. `lucipher/unite`
+is optional; a unite app installs the package the same way and keeps its published
+`config/lu/models.php`. Every transport is off by default (`enable_*_routes`); the `/spa`
+transport needs `livewire/livewire`, and the shipped blades use `livewire/flux`. A full README
+arrives with the 3.x developer-experience work; `CHANGELOG.md` has the details of each change.
+
 <h1>Laravel Universal(created in php, html, etc...) Repo - Models Addon Package</h1>
 **NOT READY JUST UPLOADED FOR INTERNAL USE AS A PROJECT DEPENDENCY... BUT KINDA READY, USELESS WITHOUT DOCUMENTATION.**<br>
 Alright let me write a 30 second documentation. Upon install package can read all existing models and create fully functioning CRUD routes using similar to Laravel Resource routes at:<br><br>
