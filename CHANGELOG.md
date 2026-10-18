@@ -6,7 +6,32 @@
 - Testbench-based feature suite with a fixture app beside the class-level unit suite; `composer test`,
   `composer coverage`, `composer lint`, `composer analyse` scripts.
 - GitHub Actions CI: preflight, Pint, a PHP 8.2–8.4 × Laravel 11/12 matrix with pcov coverage and a
-  coverage floor, Larastan at level 5 with a baseline.
+  coverage floor, Larastan at level 5 with no baseline (the analysis boots the package provider through
+  `testbench.yaml` and covers the fixture app, so the view namespace and the ownership trait resolve).
+- **One class per operation.** `Actions\Index`, `Read`, `Create`, `Update`, `Delete` extend `Actions\Action`:
+  `handle()` authorizes then `execute()`s; `perform()` owns the state change and is the method an app
+  subclass overrides. `App\LuModels\Actions\{folder}\{Action}{Model}` still replaces the whole operation.
+  `::run()` keeps the signature `lorisleiva/laravel-actions` gave these classes.
+- **One `Result` out of every write** (`Support\Result`): the record, the message, the validation errors
+  (422), a 404 for a missing record and the created record's encrypted key. The API answers it as JSON,
+  web as a toast and a redirect, rest as a flash and back, Livewire as a toast.
+- **A cached model `Descriptor`** (`Support\Descriptor::for()`): table and columns (type, input kind,
+  nullability, default, max length, keys, help text from `public $lu_help` or the column comment),
+  fillable/hidden, per-action visibility, relationships, transports, policy, validation rules per action,
+  the resolved override ladder with its source and the model's options. Cached under
+  `lu_models.descriptor.{class}` (`lu::models.descriptor_cache`); `cache:clear` drops it.
+- **`php artisan lu:models`**, the inspector: every discovered model with its transports, policy (MISSING
+  when exposed without one) and overrides; `lu:models {model}` drills into the override ladder (DEFAULT or
+  OVERRIDE per rung), the fields, relationships, rules, rate limits and audit state; `--json`, `--refresh`.
+- **Typed, broadcastable events.** `Events\Created`, `Updated`, `Deleted` extend `Events\ModelEvent` (record,
+  input, transport, changed attributes) and broadcast behind `lu::models.broadcast` (off by default) on the
+  owner's private channel or the record's channel; the payload never carries hidden attributes.
+- **`Concerns\OwnedByUser`** wires the ownership observer and the global scope the package shipped but never
+  registered: `user_id` is stamped from the signed-in user, every query is scoped to their rows, guests see
+  none (`1 = 0`, not `where user_id = null`), console commands are not scoped, `ownerKeyName()` picks the column.
+- **`schema()` and `supports()` on every operation.** `schema($model)` is a JSON Schema 2020-12 subset of
+  what the operation accepts (writable fields minus what the package injects for create/update, the key
+  for read/delete, the query parameters for index); `supports($model, $transport)` follows exposure.
 
 ### Fixed
 - The schema is read through Laravel's schema builder instead of MySQL's `SHOW FULL COLUMNS`, so the
@@ -21,6 +46,8 @@
 - PHP 8.2 dynamic-property deprecations in `IndexTable` and `Livewire\Master`.
 
 ### Security
+- The index search covers only fields the action may read: `search_fields` naming a hidden column let a
+  `LIKE` probe leak its contents; a request naming none of the readable fields now matches nothing.
 - **Nothing is exposed until a model says so.** A model is reachable on a transport only when listed in
   `lu::models.models` or declaring `public $lu_transports`; `expose_all` is a development switch. An
   unexposed model is a 404. A signed-in user on a model without a registered policy is denied (403
@@ -44,9 +71,31 @@
   directory, so the package installs from Packagist or any VCS repository and no longer depends on the
   name of its parent folder. A published `config/lu/models.php` is still honoured. The package sets no
   environment variable. Publish tags: `lu-models-config`, `lu-models-views`.
-- `lorisleiva/laravel-actions` is declared in `require` (the Actions use it). `livewire/livewire`
+- `lorisleiva/laravel-actions` is no longer required: the operations are plain classes. `livewire/livewire`
   (needed only by the `/spa` transport) and `livewire/flux` (used by the shipped blades) are
   `suggest`ed; turning `enable_spa_routes` on without Livewire fails with a clear message.
+- `index` and `show` run one query (`LuModels::runQuery()`): eager loads from the model's list or the
+  descriptor's relationships, the request's `with`, search, order, pagination or a flat limit, then
+  visibility. `show` 404s on a missing record; a bad `order` falls back to the model's
+  `index_default_order` (DESC for a `LuModel`, as declared and never applied in 3.0.x); `per_page` is
+  capped at 200; a non-array `with` is 400.
+- The API `store` payload's `data` is the created record (3.0.x serialized the whole service object); the
+  redirect after a web `store`/`update` carries the encrypted key, the only id `show` accepts by default.
+- `controller_initialize()` reads its column list from the descriptor instead of the schema on every request.
+- The descriptor's `update` rules are the model's `update_validation_rules` only, as the validator applies
+  them; the inspector and `schema()` no longer show store rules on a partial update.
+- Facade aliases in `src/` and the routes (`use Str;`, bare `Route::`, `App::`, `Log::`) are imports.
+
+### Deprecated
+- `Verbs\Creation`, `Updation`, `Deletion`, `Revelation`, `Annexation` are adapters over the operations'
+  `perform()` for one release: `App\Models\Verbs\{folder}\{Model}{Verb}` overrides and direct callers keep
+  working. Override `App\LuModels\Actions\{folder}\{Action}{Model}` instead.
+- `Events\Index` and `Events\Read` still fire but a read is not a state change; listen to the typed events.
+
+### Removed
+- The `createFromData`/`readFromData`/`updateFromData`/`deleteFromData` model hooks: the controllers tested
+  for them and then called `fromData()` with another arity, so a model that defined one fatalled.
+- The dead `menu_*` helpers and the `lu_razor` view reference (they called methods that did not exist).
 - `Verb` no longer extends `Thunk\Verbs\Event`: the base class was never fired through and contributed
   one unused property and an undeclared dependency (`hirethunk/verbs`), which is gone.
 - The whole tree is formatted with Pint (laravel preset).

@@ -1,6 +1,6 @@
 # Phase 4 — The core
 
-**Status:** planned 2026-10-18 · **Depends on:** phase 3 · **Study:** §5.6–5.13, §4, §6.6.
+**Status:** done 2026-10-18 (report: `phase-4-report.md`) · **Depends on:** phase 3 · **Study:** §5.6–5.13, §4, §6.6.
 
 ## What
 
