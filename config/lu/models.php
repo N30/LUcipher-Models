@@ -12,6 +12,14 @@ return [
     // the namespace is read from each file, so any folder works.
     'models_path' => null,
 
+    // Everything the package derives about a model (columns, help text, visibility, relationships,
+    // policy, overrides) is built once and cached; null store means the default cache. Clear it with
+    // `php artisan lu:models --refresh`, Descriptor::flush(), or cache:clear.
+    'descriptor_cache' => [
+        'enabled' => true,
+        'store' => null,
+    ],
+
     // Which models the transports may serve. Nothing is exposed until a model is listed here
     // (class => ['web', 'rest', 'api', 'spa'], or true for every transport) or declares
     // `public $lu_transports = ['web', 'api'];` itself. The two are a union.

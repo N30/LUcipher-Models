@@ -11,6 +11,9 @@ class Post extends LuModel
 
     protected $hidden = ['secret_token'];
 
+    /** Help text per field; wins over the column comment (SQLite keeps none). */
+    public $lu_help = ['title' => 'Shown as the headline'];
+
     /** body is shown on the detail page and the forms, never in the index listing. */
     public $lu_fields = ['body' => ['show', 'create', 'edit']];
 

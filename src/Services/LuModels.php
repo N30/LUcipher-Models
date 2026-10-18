@@ -8,6 +8,7 @@ use All1\LuModels\Actions\Index;
 use All1\LuModels\Actions\Read;
 use All1\LuModels\Actions\Update;
 use All1\LuModels\Models\LuModel;
+use All1\LuModels\Support\Descriptor;
 use All1\LuModels\Support\Exposure;
 use All1\LuModels\Support\FieldVisibility;
 use Illuminate\Database\Eloquent\Model;
@@ -75,40 +76,15 @@ class LuModels
 
             $this->controller_data['meta'] = LuModel::getMetaData($model_full_namespace);
 
-            // $this->controller_data['columns'] = \Schema::getColumnListing($this->controller_data['model->getTable()) ;
-            $this->controller_data['columns'] = self::schemaColumns($this->model->getTable(), $this->model->getConnectionName());
+            // the columns come from the cached descriptor; only the placeholder sample is per request
+            $this->controller_data['columns'] = Descriptor::for($model_full_namespace)->legacyColumns();
 
-            $sample = null;
             if (in_array($this->controller_data['action'], ['create', 'edit', 'need_sample'])) {
                 $sample = $this->model->first();
+                foreach ($this->controller_data['columns'] as $k => $c) {
+                    $this->controller_data['columns'][$k]['sample'] = $sample === null ? '' : ($sample->{$c['Field']} ?? '');
+                }
             }
-
-            foreach ($this->controller_data['columns'] as $k => $c) {
-                $this->controller_data['columns'][$k] = (array) $c;
-                $clean_type = preg_replace('/\s*\([^)]*\)/', '', $c->Type);
-                $max_length = preg_replace('/[^0-9]/', '', $c->Type);
-                $input_type = match ($clean_type) {
-                    'int' => 'number',
-                    'varchar' => 'text',
-                    'text' => 'textarea',
-                    'tinytext' => 'textarea',
-                    'longtext' => 'textarea',
-                    'date' => 'date',
-                    'datetime' => 'date',
-                    'timestamp' => 'date',
-                    'time' => 'date',
-                    'float' => 'number',
-                    default => 'text',
-                };
-                $this->controller_data['columns'][$k]['description'] = $c->Comment == null ? '' : $c->Comment.' ,';
-                $this->controller_data['columns'][$k]['description'] = $this->controller_data['columns'][$k]['description'].('Default: '.($c->Default == null ? 'NULL' : $c->Default));
-                $this->controller_data['columns'][$k]['required'] = $c->Null == 'NO' ? true : false;
-                $this->controller_data['columns'][$k]['clean_type'] = $clean_type;
-                $this->controller_data['columns'][$k]['input_type'] = $input_type;
-                $this->controller_data['columns'][$k]['max_length'] = $max_length ?? 524288;
-                $this->controller_data['columns'][$k]['sample'] = $sample == null ? '' : $sample->{$c->Field};
-            }
-
         }
 
         return $this->controller_data;
