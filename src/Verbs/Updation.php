@@ -2,51 +2,34 @@
 
 namespace All1\LuModels\Verbs;
 
-use Thunk\Verbs\Event;
-
-class Updation extends Event
+class Updation extends Verb
 {
-    public $model;
-    public $data;
-    public $controller_type;
-
-    public function __construct($service, $model,$data,$controller_type)
-    {
-
-        $this->model = $model;
-        $this->data = $data;
-        $this->controller_type = $controller_type;
-    }
-
     public function handle()
     {
         $model = $this->model;
         $data = $this->data;
-        $controller_type = $this->controller_type;
 
-        if($model->updation_safety) {
+        //v3.0.1: 3.0.0 tested an undeclared `updation_safety`, so every update took the branch
+        //below and wrote every submitted key past $fillable. The flag is `update_safety` and an
+        //undeclared flag now counts as on.
+        if ($this->safetyOn($model, 'update_safety')) {
+            //update() fills through $fillable / $guarded
             $model->update($data);
-            //$model->fill($data);
-            //$model->save();
-        }else { 
-            foreach($data as $k=>$v) {
+        } else {
+            //explicit opt-out ($update_safety = false): every submitted key is written
+            foreach ($data as $k => $v) {
                 $model->$k = $v;
             }
             $model->save();
         }
-        
+
+        $this->service->model = $model;
+
         //See Events/README
-        // Dispatch Laravel built-in event for side effects
-        if(class_exists('\App\Events\\'.$model->action_folder.'\\'.ucfirst(class_basename($this))."Updated" ) ) {
-            $event = '\App\Events\\'.$model->action_folder.'\\'.ucfirst(class_basename($this))."Updated";
-              event( new $event($model, $data, $controller_type));
-        }else { //run that action
-              event(new \All1\LuModels\Events\Updated($model, $data, $controller_type));
-        }
+        // Dispatch Laravel built-in event for side effects //example: App\Events\CRUD\UserUpdated
+        $this->dispatchEvent($model, 'Updated', \All1\LuModels\Events\Updated::class);
 
-        return $model;
-        //after this verbs execute
-        //event(strtolower(class_basename($this)).'.Updated', ['data' => $data]); //<-- THIS IS THE EVENT YOU WANT TO LISTEN FOR
-
+        return $this->service;
+        //after this the service fires the string event {model}.updated <-- THE EVENT YOU WANT TO LISTEN FOR
     }
 }
