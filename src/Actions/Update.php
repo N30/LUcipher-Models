@@ -2,25 +2,35 @@
 
 namespace All1\LuModels\Actions;
 
-use Lorisleiva\Actions\Concerns\AsAction;
+use All1\LuModels\Events\Updated;
+use All1\LuModels\Services\LuModels;
 
-class Update
+/** Update a record through update() (respects $fillable) unless the model sets $update_safety = false. */
+class Update extends Action
 {
-    use AsAction;
+    public const VERB = 'Updation';
 
-    // pass model, data, and controller_type (web, api, etc)[for record logs and verbs events]
-    public function handle($service, $model, $data, $controller_type)
+    public function name(): string
     {
+        return 'update';
+    }
 
-        $action = 'update';
-        // AUTHORIZATION
-        $service->authorize($action, $model, $data, $controller_type);
+    public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
+    {
+        if ($this->safetyOn($model, 'update_safety')) {
+            $model->update($data);
+        } else {
+            // explicit opt-out: every submitted key is written
+            foreach ($data as $key => $value) {
+                $model->{$key} = $value;
+            }
+            $model->save();
+        }
 
-        // Fire the Verbs event to handle state change
-        $service = $service->fireVerbs('Updation', $service, $model, $data, $controller_type);
+        $service->model = $model;
+
+        $this->dispatchEvent($model, 'Updated', Updated::class, $data, $controller_type);
 
         return $service;
     }
 }
-
-class Edit extends Update {}

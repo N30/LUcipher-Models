@@ -19,6 +19,25 @@ namespace App\LuModels\Actions\CRUD {
     }
 }
 
+namespace App\Models\Verbs\CRUD {
+    use All1\LuModels\Verbs\Updation;
+
+    /** A legacy Verb override at the 3.0.x address: still runs, marks the record it wrote. */
+    class GadgetUpdation extends Updation
+    {
+        public static int $calls = 0;
+
+        public function handle()
+        {
+            static::$calls++;
+            $this->model->forceFill(['name' => 'via legacy verb'])->save();
+            $this->service->model = $this->model;
+
+            return $this->service;
+        }
+    }
+}
+
 namespace App\Events\CRUD {
     class GadgetCreated
     {

@@ -2,22 +2,35 @@
 
 namespace All1\LuModels\Actions;
 
-use Lorisleiva\Actions\Concerns\AsAction;
+use All1\LuModels\Events\Created;
+use All1\LuModels\Services\LuModels;
 
-class Create
+/** Create a record through create() (respects $fillable) unless the model sets $creation_safety = false. */
+class Create extends Action
 {
-    use AsAction;
+    public const VERB = 'Creation';
 
-    // pass model, data, and controller_type (web, api, etc)[for record logs and verbs events]
-    public function handle($service, $model, $data, $controller_type)
+    public function name(): string
     {
+        return 'create';
+    }
 
-        $action = 'create';
-        // AUTHORIZATION
-        $service->authorize($action, $model, $data, $controller_type);
+    public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
+    {
+        if ($this->safetyOn($model, 'creation_safety')) {
+            $model = $model->create($data);
+        } else {
+            // explicit opt-out: every submitted key is written
+            foreach ($data as $key => $value) {
+                $model->{$key} = $value;
+            }
+            $model->save();
+        }
 
-        // Fire the Verbs event to handle state change
-        $service = $service->fireVerbs('Creation', $service, $model, $data, $controller_type);
+        $service->model = $model;
+
+        // example override: App\Events\CRUD\UserCreated
+        $this->dispatchEvent($model, 'Created', Created::class, $data, $controller_type);
 
         return $service;
     }

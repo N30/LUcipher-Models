@@ -2,22 +2,26 @@
 
 namespace All1\LuModels\Actions;
 
-use Lorisleiva\Actions\Concerns\AsAction;
+use All1\LuModels\Events\Deleted;
+use All1\LuModels\Services\LuModels;
 
-class Delete
+/** Delete a record. */
+class Delete extends Action
 {
-    use AsAction;
+    public const VERB = 'Deletion';
 
-    // pass model, data, and controller_type (web, api, etc)[for record logs and verbs events]
-    public function handle($service, $model, $data, $controller_type)
+    public function name(): string
     {
+        return 'delete';
+    }
 
-        $action = 'delete';
-        // AUTHORIZATION
-        $service->authorize($action, $model, $data, $controller_type);
+    public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
+    {
+        $model->delete();
 
-        // Fire the Verbs event to handle state change
-        $service = $service->fireVerbs('Deletion', $service, $model, $data, $controller_type);
+        $service->model = $model;
+
+        $this->dispatchEvent($model, 'Deleted', Deleted::class, $data, $controller_type);
 
         return $service;
     }

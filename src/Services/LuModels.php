@@ -2,7 +2,11 @@
 
 namespace All1\LuModels\Services;
 
-use All1\LuModels\Audit\AuditLogger;
+use All1\LuModels\Actions\Create;
+use All1\LuModels\Actions\Delete;
+use All1\LuModels\Actions\Index;
+use All1\LuModels\Actions\Read;
+use All1\LuModels\Actions\Update;
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\Exposure;
 use All1\LuModels\Support\FieldVisibility;
@@ -606,36 +610,29 @@ class LuModels
             && auth()->user()->{$method}();
     }
 
+    /**
+     * Run the operation behind a legacy Verb name (Creation, Updation, Deletion, Revelation, Annexation)
+     * without authorizing: the app's Verb override when one exists, else the Action's perform(), then
+     * the string event and the audit row. Kept for callers of 3.0.x; Actions\Action::execute() is the
+     * code.
+     */
     public function fireVerbs($action, $service, $model, $data, $controller_type)
     {
-        $verb_name = $action;
-        // Fire the Verbs event to handle state change
-        if (class_exists('\App\Models\Verbs\\'.$model->action_folder.'\\'.ucfirst(class_basename($model)).Str::studly($action))) {
-            $action = '\App\Models\Verbs\\'.$model->action_folder.'\\'.ucfirst(class_basename($model)).Str::studly($action);
-        } else { // run that action
-            $action = "\All1\LuModels\Verbs\\".Str::studly($action);
-        }
-        $verb = new $action($service, $model, $data, $controller_type);
+        $class = self::actionForVerb($action);
 
-        // what the record looked like before the write, for the audit log
-        $before = $model instanceof Model && $model->exists ? $model->getRawOriginal() : [];
+        return (new $class)->execute($service, $model, (array) $data, $controller_type);
+    }
 
-        $service = $verb->handle();
-
-        // v3.0.1: fire the action's own name. 3.0.0 fired {model}.updated for every action
-        // (create, read, index and delete included), so {model}.created / {model}.deleted never fired.
-        // Only the three state changes fire, as README documents; reads and indexes do not.
-        $event_name = self::stringEventName($verb_name, $model);
-        if ($event_name !== null) {
-            $payload_model = (is_object($service) && isset($service->model) && $service->model instanceof Model) ? $service->model : $model;
-            event($event_name, ['model' => $payload_model, 'data' => $data, 'controller_type' => $controller_type]); // <-- THIS IS THE EVENT YOU WANT TO LISTEN FOR IF USING LARAVEL BUILT-IN EVENTS
-
-            if ($payload_model instanceof Model) {
-                AuditLogger::record(Str::afterLast($event_name, '.'), $payload_model, $before, $controller_type);
-            }
-        }
-
-        return $service;
+    /** The Action class that owns a legacy Verb name; an unknown name maps to the Index operation. */
+    public static function actionForVerb(string $verb): string
+    {
+        return match (strtolower(class_basename($verb))) {
+            'creation', 'create', 'store' => Create::class,
+            'updation', 'update' => Update::class,
+            'deletion', 'delete', 'destroy' => Delete::class,
+            'revelation', 'read', 'show' => Read::class,
+            default => Index::class,
+        };
     }
 
     /** Verb (or action) => the past tense used in the {model}.{past} string event. */

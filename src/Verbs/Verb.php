@@ -2,24 +2,21 @@
 
 namespace All1\LuModels\Verbs;
 
+use All1\LuModels\Actions\Action;
 use All1\LuModels\Services\LuModels;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * The shared shape of the five CRUD+I Verbs (Creation, Revelation, Updation, Deletion, Annexation).
- *
- * v3.0.1: one constructor for all five, so $service is always assigned (Deletion and Updation
- * never set it in 3.0.0, which made destroy fatal), the properties are declared (no PHP 8.2
- * dynamic-property deprecations), and the app-level Laravel Event override is looked up by the
- * MODEL's name (App\Events\CRUD\UserCreated), as documented, rather than the Verb's own name
- * (App\Events\CRUD\CreationCreated). Every handle() returns the service.
- *
- * These are not event-sourced. 3.0.x extended Thunk\Verbs\Event without ever firing through it (the
- * study §4 traces why that could not work); the base class contributed one unused property and an
- * undeclared dependency, so it is gone. An app that wants a durable log fires its own flat event.
+ * @deprecated 3.1 The five Verbs (Creation, Revelation, Updation, Deletion, Annexation) were the
+ *             write half of each operation; the write now lives in Actions\{Create,Read,Update,Delete,Index}::perform().
+ *             These classes stay one release as adapters so `App\Models\Verbs\{folder}\{Model}{Verb}`
+ *             overrides and direct callers keep working. They were never event-sourced (study §4).
  */
 abstract class Verb
 {
+    /** The Action class whose perform() this adapter delegates to. */
+    protected const ACTION = Action::class;
+
     /** @var LuModels */
     public $service;
 
@@ -38,33 +35,18 @@ abstract class Verb
         $this->controller_type = $controller_type;
     }
 
-    /**
-     * Whether a safety flag is on for this model. Fails closed: a model that does not declare the
-     * flag (any plain Eloquent model, or a LuModel that leaves the default) is treated as safe,
-     * i.e. writes go through create()/update() and respect $fillable. Only an explicit `false`
-     * opts a model out.
-     */
-    protected function safetyOn($model, string $flag): bool
+    public function handle()
     {
-        return ($model->{$flag} ?? true) !== false;
+        $action = static::ACTION;
+        $this->service = (new $action)->perform($this->service, $this->model, (array) $this->data, $this->controller_type);
+        $this->model = $this->service->model instanceof Model ? $this->service->model : $this->model;
+
+        return $this->service;
     }
 
-    /**
-     * The app's override for a Laravel Event, e.g. App\Events\CRUD\UserCreated for a User model
-     * and the "Created" suffix, or null when the app defines none.
-     */
+    /** @deprecated 3.1 Use Actions\Action::appEventClass(). */
     public static function appEventClass($model, string $suffix): ?string
     {
-        $folder = $model->action_folder ?? 'CRUD';
-        $class = '\\App\\Events\\'.$folder.'\\'.ucfirst(class_basename($model)).$suffix;
-
-        return class_exists($class) ? $class : null;
-    }
-
-    /** Dispatch the app's Event override when it exists, else the package's default Event. */
-    protected function dispatchEvent($model, string $suffix, string $default): void
-    {
-        $event = static::appEventClass($model, $suffix) ?? $default;
-        event(new $event($model, $this->data, $this->controller_type));
+        return Action::appEventClass($model, $suffix);
     }
 }

@@ -2,24 +2,24 @@
 
 namespace All1\LuModels\Actions;
 
-use Lorisleiva\Actions\Concerns\AsAction;
+use All1\LuModels\Events\Index as IndexEvent;
+use All1\LuModels\Services\LuModels;
 
-class Index
+/** List records: the service's index query, then the Index event. */
+class Index extends Action
 {
-    public $access = false;
+    public const VERB = 'Annexation';
 
-    use AsAction;
-
-    // pass model, data, and controller_type (web, api, etc)[for record logs and verbs events]
-    public function handle($service, $model, $data, $controller_type)
+    public function name(): string
     {
+        return 'index';
+    }
 
-        $action = 'index';
-        // AUTHORIZATION
-        $service->authorize($action, $model, $data, $controller_type);
+    public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
+    {
+        $service->controller_index($model);
 
-        // Fire the Verbs event to handle state change
-        $service = $service->fireVerbs('Annexation', $service, $model, $data, $controller_type);
+        $this->dispatchEvent($model, 'Index', IndexEvent::class, $data, $controller_type);
 
         return $service;
     }

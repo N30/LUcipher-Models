@@ -2,25 +2,25 @@
 
 namespace All1\LuModels\Actions;
 
-use Lorisleiva\Actions\Concerns\AsAction;
+use All1\LuModels\Events\Read as ReadEvent;
+use All1\LuModels\Services\LuModels;
 
-class Read
+/** Show one record: the service's show query, then the Read event. The policy ability is "show". */
+class Read extends Action
 {
-    use AsAction;
+    public const VERB = 'Revelation';
 
-    // pass model, data, and controller_type (web, api, etc)[for record logs and verbs events]
-    public function handle($service, $model, $data, $controller_type)
+    public function name(): string
     {
+        return 'show';
+    }
 
-        $action = 'show';
-        // AUTHORIZATION
-        $service->authorize($action, $model, $data, $controller_type);
+    public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
+    {
+        $service->controller_show($model);
 
-        // Fire the Verbs event to handle state change
-        $model = $service = $service->fireVerbs('Revelation', $service, $model, $data, $controller_type);
+        $this->dispatchEvent($model, 'Read', ReadEvent::class, $data, $controller_type);
 
         return $service;
     }
 }
-
-class Show extends Read {}

@@ -2,6 +2,7 @@
 
 namespace All1\LuModels\Tests;
 
+use Illuminate\Auth\RequestGuard;
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use Illuminate\Database\Capsule\Manager as Capsule;
@@ -49,6 +50,10 @@ abstract class UnitTestCase extends BaseTestCase
         $translator = new Translator(new ArrayLoader, 'en');
         $app->instance('translator', $translator);
         $app->instance('validator', new Factory($translator, $app));
+        // auth() returns a Factory|Guard: a guard that never resolves a user, unless a test rebinds it
+        $guest = new RequestGuard(fn () => null, $app->make('request'));
+        $app->instance('auth', $guest);
+        $app->instance(\Illuminate\Contracts\Auth\Factory::class, $guest);
 
         Facade::clearResolvedInstances();
         Facade::setFacadeApplication($app);

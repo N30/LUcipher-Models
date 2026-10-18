@@ -2,20 +2,10 @@
 
 namespace All1\LuModels\Verbs;
 
-use All1\LuModels\Events\Index;
+use All1\LuModels\Actions\Index;
 
+/** @deprecated 3.1 Adapter over Actions\Index::perform(); see Verb. */
 class Annexation extends Verb
 {
-    public function handle()
-    {
-        $model = $this->model;
-
-        $this->service->controller_index($this->model);
-
-        // See Events/README
-        // Dispatch Laravel built-in event for side effects //example: App\Events\CRUD\UserIndex
-        $this->dispatchEvent($model, 'Index', Index::class);
-
-        return $this->service;
-    }
+    protected const ACTION = Index::class;
 }
