@@ -3,6 +3,7 @@
 namespace All1\LuModels\Tests;
 
 use All1\LuModels\Providers\LuModelsServiceProvider;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -18,6 +19,9 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
+        // LuModel::getModels() scans app_path('Models'); point it at the fixture app.
+        $app->useAppPath(__DIR__.'/Fixtures/app');
+
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
@@ -31,6 +35,7 @@ abstract class TestCase extends Orchestra
         foreach (['web', 'rest', 'api', 'spa'] as $transport) {
             $app['config']->set("lu::models.enable_{$transport}_routes", true);
         }
+        $app['config']->set('lu::models.models', [Post::class => true]);
         $app['config']->set('lu::models.web_middleware', ['web']);
         $app['config']->set('lu::models.spa_middleware', ['web']);
         $app['config']->set('lu::models.allow_unauthenticated_api', true);

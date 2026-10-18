@@ -8,6 +8,21 @@ return [
     // 'api_middleware'=> [this one is mandatory for security reasons, some models may need access publicly but API never without a token]
     'spa_middleware' => ['web', 'auth'],
 
+    // Which models the transports may serve. Nothing is exposed until a model is listed here
+    // (class => ['web', 'rest', 'api', 'spa'], or true for every transport) or declares
+    // `public $lu_transports = ['web', 'api'];` itself. The two are a union.
+    'models' => [
+        // App\Models\Post::class => ['web', 'api'],
+    ],
+    // Development convenience: expose every model under app/Models on every enabled transport.
+    // Policies are still required. Never leave this on in production.
+    'expose_all' => false,
+
+    // Authorization: a model needs a registered policy to be reached by a signed-in user; a model
+    // without one is denied. The user method below bypasses policies (the LuCipher convention);
+    // set it to null to turn the bypass off.
+    'super_admin_method' => 'is_super_admin',
+
     // If you avorride action clasess you might need to implement these in your own or use your own logic
     // Also individual model [not-built yet] settings will override these!
     // Also policies will override these!!! [about to build now]

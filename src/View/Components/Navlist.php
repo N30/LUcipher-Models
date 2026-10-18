@@ -2,7 +2,7 @@
 
 namespace All1\LuModels\View\Components;
 
-use All1\LuModels\Models\LuModel;
+use All1\LuModels\Support\Exposure;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
@@ -24,7 +24,7 @@ class Navlist extends Component
      */
     public function render(): View|Closure|string
     {
-        $list = LuModel::getModels();
+        $list = Exposure::exposedModels($this->type);
 
         return view('lu_models::navlist')
             ->with('type', $this->type)

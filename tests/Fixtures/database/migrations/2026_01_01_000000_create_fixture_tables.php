@@ -25,10 +25,17 @@ return new class extends Migration
             $table->string('secret_token')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('notes', function (Blueprint $table) {
+            $table->id();
+            $table->string('body');
+            $table->timestamps();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('notes');
         Schema::dropIfExists('posts');
         Schema::dropIfExists('users');
     }

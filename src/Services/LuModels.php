@@ -3,8 +3,10 @@
 namespace All1\LuModels\Services;
 
 use All1\LuModels\Models\LuModel;
+use All1\LuModels\Support\Exposure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Str;
 
@@ -55,6 +57,12 @@ class LuModels
                 } else {
                     abort(404, Str::headline($relative_namespace).' is not a thing, no route found');
                 }
+            }
+
+            // Safe by default: a model nobody exposed on this transport is a 404, like a model that
+            // does not exist (see Support\Exposure).
+            if (! Exposure::isExposed($model_full_namespace, $this->type)) {
+                abort(404, Str::headline($relative_namespace).' is not a thing, no route found');
             }
 
             $this->model = new $model_full_namespace;
@@ -553,22 +561,45 @@ class LuModels
         return false;
     }
 
+    /**
+     * The gate every action passes before it touches the model: the configured super-admin method
+     * first, then an explicit public opt-in for this model and action, then the model's policy.
+     * A signed-in user hitting a model with no policy is denied, not let through.
+     */
     public static function authorize($action, $model, $data, $controller_type)
     {
-
-        if (auth()->check() &&
-        method_exists(auth()->user(), 'is_super_admin')
-        && auth()->user()->is_super_admin()) {
+        if (self::isSuperAdmin()) {
             return true;
         }
-        $is_public = LuModels::can_public_access_model_for($model, $action);
-        $policy_access = auth()->check() && auth()->user()->can($action, [$model, $data, $controller_type]);
-        // dd("ADASDS",$action);
-        if (! $is_public && ! $policy_access) {
-            abort(403, 'Unauthorized! '.(auth()->check() ? 'Your Account' : 'The Public').' does not have permission to '.$action.
-            ' this '.class_basename($model).' page.');
+
+        if (LuModels::can_public_access_model_for($model, $action)) {
+            return true;
         }
 
+        if (! auth()->check()) {
+            abort(403, 'Unauthorized! The Public does not have permission to '.$action.' this '.class_basename($model).' page.');
+        }
+
+        if (Gate::getPolicyFor($model) === null) {
+            abort(403, 'No policy is registered for '.get_class($model).'. Define App\\Policies\\'.class_basename($model).'Policy (or register one with Gate::policy()) before exposing it.');
+        }
+
+        if (! auth()->user()->can($action, [$model, $data, $controller_type])) {
+            abort(403, 'Unauthorized! Your Account does not have permission to '.$action.' this '.class_basename($model).' page.');
+        }
+
+        return true;
+    }
+
+    /** Whether the signed-in user bypasses policies through the configured super-admin method. */
+    public static function isSuperAdmin(): bool
+    {
+        $method = config('lu::models.super_admin_method');
+
+        return is_string($method) && $method !== ''
+            && auth()->check()
+            && method_exists(auth()->user(), $method)
+            && auth()->user()->{$method}();
     }
 
     public function fireVerbs($action, $service, $model, $data, $controller_type)
