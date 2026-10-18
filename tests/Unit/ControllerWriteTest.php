@@ -44,6 +44,7 @@ class ControllerWriteTest extends UnitTestCase
             'after_store_redirect' => 'show',
             'after_update_redirect' => 'show',
             'after_destroy_redirect' => 'index',
+            'public_create_models' => [Widget::class],
             'public_update_models' => [Widget::class],
             'public_delete_models' => [Widget::class],
         ]]);
@@ -104,7 +105,8 @@ class ControllerWriteTest extends UnitTestCase
         $response = $this->dispatch('PUT', '/web/widgets/update/1', ['name' => 'New']);
 
         $this->assertInstanceOf(RedirectResponse::class, $response);
-        $this->assertSame('http://localhost/web/widgets/show/1', $response->getTargetUrl());
+        $this->assertSame(1, decrypt(basename($response->getTargetUrl())), 'the redirect carries the encrypted key, which show() accepts');
+        $this->assertStringStartsWith('http://localhost/web/widgets/show/', $response->getTargetUrl());
         $this->assertSame(['Record updated'], $this->session->get('messages'));
         $this->assertSame('New', Widget::find(1)->name);
     }
@@ -124,7 +126,7 @@ class ControllerWriteTest extends UnitTestCase
     {
         $response = $this->dispatch('PATCH', '/web/widgets/update/1', ['name' => 'Patched']);
 
-        $this->assertSame('http://localhost/web/widgets/show/1', $response->getTargetUrl());
+        $this->assertSame(1, decrypt(basename($response->getTargetUrl())));
         $this->assertSame('Patched', Widget::find(1)->name);
     }
 
@@ -177,6 +179,17 @@ class ControllerWriteTest extends UnitTestCase
         $this->assertSame('Record deleted', $result['message']);
         $this->assertSame(1, $result['data']['id']);
         $this->assertNull(Widget::find(1));
+    }
+
+    public function test_api_store_returns_the_record_and_its_encrypted_key(): void
+    {
+        $response = $this->dispatch('POST', '/api/widgets/store', ['name' => 'Fresh']);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $result = $response->getData(true);
+        $this->assertSame('We have received and saved your information successfully.', $result['message']);
+        $this->assertSame('Fresh', $result['data']['name']);
+        $this->assertSame($result['data']['id'], decrypt($result['id']));
     }
 
     public function test_record_of_accepts_the_service_a_model_or_neither(): void

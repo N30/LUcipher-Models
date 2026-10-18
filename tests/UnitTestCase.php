@@ -7,6 +7,7 @@ use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
@@ -54,6 +55,9 @@ abstract class UnitTestCase extends BaseTestCase
         $guest = new RequestGuard(fn () => null, $app->make('request'));
         $app->instance('auth', $guest);
         $app->instance(\Illuminate\Contracts\Auth\Factory::class, $guest);
+        $encrypter = new Encrypter(random_bytes(32), 'AES-256-CBC');
+        $app->instance('encrypter', $encrypter);
+        $app->instance(\Illuminate\Contracts\Encryption\Encrypter::class, $encrypter);
 
         Facade::clearResolvedInstances();
         Facade::setFacadeApplication($app);

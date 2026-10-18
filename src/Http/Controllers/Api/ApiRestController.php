@@ -16,20 +16,15 @@ class ApiRestController extends ApiResourceController
             return $this->chooseView($this->{$this->action}($id));
         } else {
             $result = $this->runAction($request, $id);
-            // redirect back and flash message
-            if (isset($result['errors'])) {
-                return redirect()->back()->withErrors($result['errors'])->withInput();
-            }
-            if (isset($result['message'])) {
-                session()->flash('flash.banner', $result['message']);
 
-                return redirect()->back()->with('messages', [$result['message']]);
-            } else {
-                return redirect()->back();
+            if ($result->failed()) {
+                return redirect()->back()->withErrors($result->errors)->withInput();
             }
 
+            session()->flash('flash.banner', $result->message);
+
+            return redirect()->back()->with('messages', [$result->message]);
         }
-
     }
 
     public function chooseView($data)

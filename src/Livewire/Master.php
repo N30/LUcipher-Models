@@ -128,7 +128,7 @@ class Master extends Component
     public function afterStore($result)
     {
         $this->js(" 
-        window.toast('Data Created', { description: '".$result['message']."', type: 'success' })");
+        window.toast('Data Created', { description: '".$result->message."', type: 'success' })");
     }
 
     public function beforeUpdate()
@@ -153,6 +153,6 @@ class Master extends Component
     public function afterUpdate($result)
     {
         $this->js(" 
-        window.toast('Data Created', { description: '".$result['message']."', type: 'success' })");
+        window.toast('Data Created', { description: '".$result->message."', type: 'success' })");
     }
 }

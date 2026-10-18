@@ -5,6 +5,7 @@ namespace All1\LuModels\Http\Controllers\Api;
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\FieldVisibility;
+use All1\LuModels\Support\Result;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,30 +109,20 @@ class ApiResourceController
     }
 
     /**
-     * The API transport's answer. A validation failure (including a guarded key in the payload) is
-     * 422 with the errors by field, a missing record 404, everything else JSON with status 200.
+     * The API transport's answer: a Result as JSON with its status (422 with errors by field, 404
+     * for a missing record, 200 otherwise); a read's data as JSON 200.
      */
     protected function toResponse($result)
     {
+        if ($result instanceof Result) {
+            return $result->toJsonResponse();
+        }
+
         if ($result instanceof Response) {
             return $result;
         }
 
-        if (is_array($result) && isset($result['errors'])) {
-            $errors = $result['errors'] instanceof \Illuminate\Contracts\Validation\Validator
-                ? $result['errors']->errors()->toArray()
-                : (array) $result['errors'];
-
-            return new JsonResponse(['message' => $result['message'] ?? 'The given data was invalid.', 'errors' => $errors], 422);
-        }
-
-        $status = 200;
-        if (is_array($result) && isset($result['status'])) {
-            $status = (int) $result['status'];
-            unset($result['status']);
-        }
-
-        return new JsonResponse($result, $status);
+        return new JsonResponse($result, 200);
     }
 
     /**
@@ -312,7 +303,7 @@ class ApiResourceController
         $validator = $this->validatorFor($data, 'create', $client_keys);
 
         if ($validator->fails()) {
-            return ['errors' => $validator, 'message' => 'There was an issue with your input.'];
+            return Result::invalid($validator);
         }
 
         // dd($validated);
@@ -323,11 +314,10 @@ class ApiResourceController
         } else {
             $data = LuModels::fromData('create', $this->service, $model_copy_since_method_exist_is_mutating_it, $data, $this->controller_type);
         }
-        // the encrypted key of the record the write produced (an app override may return the model itself)
+        // the record the write produced (an app override may return the model itself)
         $record = self::recordOf($data);
-        $id = $record ? encrypt($record->getKey()) : null;
 
-        return ['message' => 'We have received and saved your information successfully.', 'data' => $data, 'id' => $id];
+        return Result::ok('We have received and saved your information successfully.', $record, $record, $record ? encrypt($record->getKey()) : null);
     }
 
     public function update($id, $data = null)
@@ -338,12 +328,12 @@ class ApiResourceController
 
         $obj = $this->model->find($id);
         if (! $obj) {
-            return ['message' => 'Record not found', 'data' => [], 'status' => 404];
+            return Result::notFound();
         }
 
         $validator = $this->validatorFor($data, 'update', array_keys($data));
         if ($validator->fails()) {
-            return ['errors' => $validator, 'message' => 'There was an issue with your input.'];
+            return Result::invalid($validator);
         }
 
         if (method_exists($obj, 'updateFromData')) {
@@ -352,8 +342,9 @@ class ApiResourceController
             $data = LuModels::fromData('update', $this->service, $obj, $data, $this->controller_type);
         }
 
-        // v3.0.1: the Verbs now return the service; 'data' stays the updated model, as in 3.0.0.
-        return ['message' => 'Record updated', 'data' => self::recordOf($data, $obj)];
+        $record = self::recordOf($data, $obj);
+
+        return Result::ok('Record updated', $record, $record, encrypt($record->getKey()));
     }
 
     public function destroy($id)
@@ -363,7 +354,7 @@ class ApiResourceController
         // if yes delete
         $obj = $this->model->find($id);
         if (! $obj) {
-            return ['message' => 'Record not found', 'data' => [], 'status' => 404];
+            return Result::notFound();
         }
         // check if auth user owns the record
         // if not abort
@@ -375,8 +366,9 @@ class ApiResourceController
             $data = LuModels::fromData('delete', $this->service, $obj, request()->except(['_token', '_method']), $this->controller_type);
         }
 
-        // v3.0.1: 'data' is the deleted model (3.0.0 fataled before reaching here).
-        return ['message' => 'Record deleted', 'data' => self::recordOf($data, $obj)];
+        $record = self::recordOf($data, $obj);
+
+        return Result::ok('Record deleted', $record, $record);
 
     }
 }

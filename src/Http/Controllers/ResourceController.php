@@ -20,69 +20,29 @@ class ResourceController extends ApiResourceController
         } else {
 
             $result = $this->runAction($request, $id);
-            // echo "Asda"; return false;
 
-            // redirect back and flash message
             $redirect_action = config('lu::models.after_'.$this->action.'_redirect');
-            if (isset($result['errors'])) {
-                $popErrors = [];
-                foreach ($result['errors']->errors()->all() as $error) {
-                    $popErrors[] = json_encode([
-                        'type' => 'warning',
-                        'title' => 'Oops',
-                        'message' => $error,
-                    ]);
-                }
-                $toast_data = $popErrors;
-                session()->put('toast', $toast_data);
 
-                // dd(request()->input());
-                return back()->withErrors($result['errors'])->withInput();
-            }
-            if (isset($result['message'])) {
-
-                $toast_data = json_encode([
-                    'type' => 'success',
-                    'title' => 'Success',
-                    'message' => $result['message'],
-                ]);
-                session()->put('toast', $toast_data);
-                // dd("asdads");
-
-                // if(config('lu_models::after_create_redirect')) {
-                //   return redirect()->back()->with('messages', [$result['message']]);
-                if ($redirect_action == 'back') {
-                    return redirect()->back()->with('messages', [$result['message']]);
-                } else {
-                    return redirect()->route($this->redirectRouteName(), ['model' => $model, 'action' => $redirect_action, 'id' => $this->redirectId($result)])->with('messages', [$result['message']]);
+            if ($result->failed()) {
+                $toasts = [];
+                foreach ($result->errors->all() as $error) {
+                    $toasts[] = json_encode(['type' => 'warning', 'title' => 'Oops', 'message' => $error]);
                 }
-            } else {
-                if ($redirect_action == 'back') {
-                    return redirect()->back();
-                } else {
-                    return redirect()
-                        ->route($this->redirectRouteName(), ['model' => $model, 'action' => $redirect_action, 'id' => $this->redirectId($result)]);
-                }
+                session()->put('toast', $toasts);
+
+                return back()->withErrors($result->errors)->withInput();
             }
 
+            session()->put('toast', json_encode(['type' => 'success', 'title' => 'Success', 'message' => $result->message]));
+
+            if ($redirect_action == 'back') {
+                return redirect()->back()->with('messages', [$result->message]);
+            }
+
+            return redirect()
+                ->route($this->redirectRouteName(), ['model' => $model, 'action' => $redirect_action, 'id' => $result->redirectKey()])
+                ->with('messages', [$result->message]);
         }
-
-    }
-
-    /**
-     * v3.0.1: the id to redirect to after a write. Store hands back an (encrypted) 'id'; update
-     * and destroy hand back the record in 'data'. 3.0.0 read $result['data']->id, which raised
-     * "Undefined property" (a 500) once the Verbs returned the service, and on a "Record not
-     * found" result, where 'data' is an empty array.
-     */
-    protected function redirectId(array $result)
-    {
-        if (isset($result['id'])) {
-            return $result['id'];
-        }
-        $record = self::recordOf($result['data'] ?? null);
-
-        return $record?->getKey();
     }
 
     /**
