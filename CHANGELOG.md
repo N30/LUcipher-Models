@@ -47,6 +47,17 @@
 - **Dry run.** A write to the API with `dry_run=1` is authorized and validated, answers
   `{would: true, message: "Would create Post", data}` and writes nothing: no row, no event, no audit
   entry. `Result::would()`, `Action::dryRun()` and `Action::would()` carry it; browser transports ignore it.
+- **The UI seam.** The shipped blades are written against `lu_models::ui.*` primitives (button, input,
+  textarea, checkbox, select, badge, heading, separator, table/row/cell, menu/menu-item, pagination,
+  toasts) that render plain HTML with Tailwind classes by default and Flux's free components when
+  `lu::models.ui.flux` is on and livewire/flux is installed; `lu::models.ui.layout` names the host
+  layout. One blade tree, two skins; `--tag=lu-models-views` for anything more. Flux Pro is never needed.
+- **Descriptor-driven pages.** The index applies `index_columns` (declared in 3.0.x, never applied) and
+  otherwise shows what the index may read, sorts by its headers, links each row to show/edit/delete by
+  plain key; the show page renders what `show` may read; the create and edit forms come from
+  `Form::fields()`, i.e. the operation's `schema()` (fields, required, length) plus the descriptor's input
+  kind and help text, so the form and the API cannot disagree. The toasts component shows what the
+  controller flashed and listens for `lu-models:toast` browser events.
 - **`schema()` and `supports()` on every operation.** `schema($model)` is a JSON Schema 2020-12 subset of
   what the operation accepts (writable fields minus what the package injects for create/update, the key
   for read/delete, the query parameters for index); `supports($model, $transport)` follows exposure.
@@ -113,6 +124,8 @@
   plain keys for everyone, so the shipped index could not reach its own show and edit pages. A value that
   neither decrypts nor matches is a 404, not a 500.
 - `show` returns the record (the API answers `{data: {...}}`); 3.0.x returned a one-row collection.
+- The web controller flashes its toast instead of putting it in the session, where 3.0.x left it to show
+  on every later page. The unused `rest/*` blades and the three one-off filter/pagination partials are gone.
 
 ### Deprecated
 - The action-shaped API routes `/api/{model}/{action}/{id?}` (`lu::api.resources`) answer for one more

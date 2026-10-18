@@ -1,102 +1,35 @@
-<flux:table :paginate="$has_page & $type=='spa' ? $data : null">
-    <flux:table.columns>
-        <flux:table.column>{{ __(config('lu::models.lang_prefix') . 'ID') }}</flux:table.column>
-        @foreach ($db_columns as $col)
-            @if (isset($model->hidden_columns) && in_array($col, $model->hidden_columns))
-                @continue
-            @endif
-            <flux:table.column>
-                {{ __(config('lu::models.lang_prefix') . \Str::headline(str_replace('.', ' ', $col))) }}
-            </flux:table.column>
-        @endforeach
-    </flux:table.columns>
-
-    <flux:table.row>
-        @foreach ($data as $model)
-            <?php if(is_array($model)) $model = (object) $model; ?>
-            <flux:table.row>
-                <flux:table.cell>
-                    {{ $model->id ?? ''}}
-                </flux:table.cell>
-
-                {{-- @foreach ($model->index_columns as $c) --}}
-                @foreach ($db_columns as $c)
-                    @if (isset($model->hidden_columns) && in_array($c, $model->hidden_columns))
-                        @continue
-                    @endif
-                    @if (strpos($c, '.') !== false)
-                        @php
-                            $depth = Str::substrCount($c, '.');
-                            $parent = $model;
-                            for ($i = 0; $i < $depth; $i++) {
-                                $tmp = explode('.', $c); //[0]=>pimp,1=>id
-                                $relationship_method = $tmp[$i]; //pimp
-                                $relationship = $parent->$relationship_method;
-                                $field = $tmp[$i + 1]; //id
-                            }
-
-                        @endphp
-                        <flux:table.cell>
-                            @if (is_iterable($relationship))
-                                @foreach ($relationship as $r)
-                                    @if (method_exists($r, 'displayText'))
-                                        <flux:badge>{{ $r->displayText($field) }} </flux:badge>
-                                    @else
-                                        <flux:badge>{{ $r->$field }}</flux:badge>
-                                    @endif
-                                @endforeach
-                            @elseif($relationship !== null)
-                                @if (method_exists($relationship, 'getAttributes'))
-                                    <flux:badge>{{ $relationship->$field }}</flux:badge>
-                                @else
-                                    @foreach ($relationship as $r)
-                                        <flux:badge>{{ json_encode($r) }}</flux:badge>
-                                    @endforeach
-                                @endif
-                            @endif
-                        </flux:table.cell>
+{{-- The listing. $columns and $headers come from the component class: index_columns when the model names them, else what the index may read. --}}
+@php $writeType = $type === 'spa' ? 'web' : $type; @endphp
+<x-lu_models::ui.table :columns="$headers" class="lu-index-table">
+    @forelse ($data as $row)
+        @php $key = $row->getKey(); @endphp
+        <x-lu_models::ui.row wire:key="row-{{ $key }}">
+            @foreach ($columns as $column)
+                <x-lu_models::ui.cell>
+                    @if (str_contains($column, '.'))
+                        @foreach ($relatedValues($row, $column) as $value)
+                            <x-lu_models::ui.badge>{{ $value }}</x-lu_models::ui.badge>
+                        @endforeach
+                    @elseif (method_exists($row, 'displayText'))
+                        {{ $row->displayText($column) }}
                     @else
-                        <flux:table.cell>
-                            @if (method_exists($c, 'displayText'))
-                            {{ $model->displayText($c) }}
-                        @else
-                            <flux:badge>{{ $model->$c??'' }}</flux:badge>
-                        @endif
-                        </flux:table.cell>
+                        {{ $cellText($row->getAttribute($column)) }}
                     @endif
-                @endforeach
-
-
-
-                <flux:table.cell>
-                    <flux:dropdown>
-                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom">
-                        </flux:button>
-                        <flux:menu>
-                            <flux:menu.item
-                                href="{{ route('lu::web.resources', [$route_prefix, 'edit', $model->id??NULL]) }}"
-                                icon="pencil">Edit</flux:menu.item>
-
-                            <flux:menu.separator />
-
-
-
-                            <flux:menu.separator />
-                            <form method="POST"
-                                action="{{ route('lu::'.$type.'.resources', [$route_prefix, 'destroy', $model->id??NULL]) }}">
-                                @csrf
-                                @method('DELETE')
-
-
-                                <flux:menu.item variant="danger" icon="trash" type="submit">
-                                    Delete
-                                </flux:menu.item>
-
-                            </form>
-                        </flux:menu>
-                    </flux:dropdown>
-                </flux:table.cell>
-            </flux:table.row>
-        @endforeach
-    </flux:table.row>
-</flux:table>
+                </x-lu_models::ui.cell>
+            @endforeach
+            <x-lu_models::ui.cell class="text-right">
+                <x-lu_models::ui.menu>
+                    <x-lu_models::ui.menu-item :href="route('lu::'.$type.'.resources', [$route_prefix, 'show', $key])" icon="eye">{{ __('Show') }}</x-lu_models::ui.menu-item>
+                    <x-lu_models::ui.menu-item :href="route('lu::'.$type.'.resources', [$route_prefix, 'edit', $key])" icon="pencil">{{ __('Edit') }}</x-lu_models::ui.menu-item>
+                    <x-lu_models::ui.menu-item :href="route('lu::'.$writeType.'.resources.destroy', [$route_prefix, 'destroy', $key])" method="DELETE" variant="danger" icon="trash" :confirm="__('Delete this record?')" wire:submit.prevent="delete({{ \Illuminate\Support\Js::from($key) }})">{{ __('Delete') }}</x-lu_models::ui.menu-item>
+                </x-lu_models::ui.menu>
+            </x-lu_models::ui.cell>
+        </x-lu_models::ui.row>
+    @empty
+        <x-lu_models::ui.row>
+            <x-lu_models::ui.cell colspan="{{ count($columns) + 1 }}">
+                <span class="text-zinc-500">{{ __('Nothing here yet.') }}</span>
+            </x-lu_models::ui.cell>
+        </x-lu_models::ui.row>
+    @endforelse
+</x-lu_models::ui.table>

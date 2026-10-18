@@ -10,6 +10,9 @@ use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
+    /** Boot the installed packages' providers (Livewire, Flux, laravel/mcp) as an application would. */
+    protected $enablesPackageDiscoveries = true;
+
     use RefreshDatabase;
 
     protected function getPackageProviders($app): array

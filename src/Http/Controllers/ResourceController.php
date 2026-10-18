@@ -30,12 +30,13 @@ class ResourceController extends ApiResourceController
                 foreach ($result->errors->all() as $error) {
                     $toasts[] = json_encode(['type' => 'warning', 'title' => 'Oops', 'message' => $error]);
                 }
-                session()->put('toast', $toasts);
+                session()->flash('toast', $toasts);
 
                 return back()->withErrors($result->errors)->withInput();
             }
 
-            session()->put('toast', json_encode(['type' => 'success', 'title' => 'Success', 'message' => $result->message]));
+            // flashed, not put: 3.0.x kept the toast in the session and it showed on every later page
+            session()->flash('toast', json_encode(['type' => 'success', 'title' => 'Success', 'message' => $result->message]));
 
             if ($redirect_action == 'back') {
                 return redirect()->back()->with('messages', [$result->message]);
@@ -80,9 +81,12 @@ class ResourceController extends ApiResourceController
             $view = view(LuModel::viewFileFor($this->model, $this->action), ['data' => $data]);
         }
 
-        $columns = in_array($this->action, ['create', 'edit'], true)
-            ? FieldVisibility::for($this->model)->filterColumns($this->columns, $this->action)
-            : $this->columns;
+        $visibility = FieldVisibility::for($this->model);
+        $columns = match (true) {
+            in_array($this->action, ['create', 'edit'], true) => $visibility->filterColumns($this->columns, $this->action),
+            $this->action === 'show' => array_values(array_filter($this->columns, fn ($c) => $visibility->visible((string) $c['Field'], 'show'))),
+            default => $this->columns,
+        };
 
         return $view
             ->with('model', $this->model)

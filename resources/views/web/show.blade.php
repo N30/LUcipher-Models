@@ -1,74 +1,66 @@
-<?php if (!isset($layout)) {
-    $layout = config('lu::models.layout'); //config('models.layout');
-} else {
-    $layout = 'lu_models::empty-layout';
-}
+<?php
+$layout = isset($layout) ? 'lu_models::empty-layout' : \All1\LuModels\Support\Ui::layout();
+$lang = config('lu::models.lang_prefix');
+$writeType = $controller_type === 'spa' ? 'web' : $controller_type;
 ?>
 <x-lu_models::dynamic-layout :layout="$layout">
+    <x-lu_models::ui.toasts />
 
-
-    <x-slot name="header">
-
-        {{ __(ucfirst($action)) . ' ' . __(ucfirst(Str::singular($route_prefix))) . ' #' . $model->id }}
-
-    </x-slot>
-
-    <x-slot name="content">
-        <div class="flex flex-col space-y-4 p-6 bg-white rounded-xl shadow-md">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                @foreach ($columns as $c)
-                    @php
-                        $label = str_replace('_', ' ', ucfirst($c['Field']));
-                    @endphp
-                    @if (!in_array($c['Field'], ['id', 'created_at', 'updated_at', 'user_id', 'slug']))
-                        <div class="p-4 border rounded-lg bg-gray-50">
-                            <h3 class="text-lg font-semibold text-zinc-700">{{ $label }}</h3>
-                            <div class="mt-2">
-                                @if (strpos($c['Field'], 'photo') !== false)
-                                    <img src="{{ $model->{$c['Field']} }}" 
-                                         class="h-32 w-32 rounded-xl border-zinc-700 border" />
-                                @elseif($c['input_type'] == 'textarea')
-                                    <div class="p-3 bg-gray-100 rounded-md border">{{ $model->{$c['Field']} }}</div>
-                                @elseif($c['input_type'] == 'date')
-                                    <div class="text-zinc-500">{{ \Carbon\Carbon::parse($model->{$c['Field']})->format('M d, Y') }}</div>
-                                @elseif(is_numeric($model->{$c['Field']}))
-                                    <div class="font-mono text-green-600">{{ number_format($model->{$c['Field']}, 2) }}</div>
-                                @else
-                                    <div class="text-zinc-600">{{ $model->{$c['Field']} }}</div>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-                @endforeach
+    <div class="lu-models lu-show space-y-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <x-lu_models::ui.heading>
+                {{ __($lang.ucfirst(Str::singular($route_prefix))).' #'.$model->getKey() }}
+            </x-lu_models::ui.heading>
+            <div class="flex gap-2">
+                <x-lu_models::ui.button :href="route('lu::'.$controller_type.'.resources', [$route_prefix, 'index'])" size="sm" variant="ghost">{{ __('Back') }}</x-lu_models::ui.button>
+                <x-lu_models::ui.button :href="route('lu::'.$controller_type.'.resources', [$route_prefix, 'edit', $model->getKey()])" size="sm" variant="primary">{{ __('Edit') }}</x-lu_models::ui.button>
             </div>
+        </div>
 
-            <div class="mt-6">
-                <h2 class="text-xl font-bold mb-4">Relationships</h2>
+        <x-lu_models::ui.separator />
+
+        <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            @foreach ($columns as $c)
+                @php $value = $model->getAttribute($c['Field']); @endphp
+                <div class="rounded-lg border border-zinc-200 bg-white p-4">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ \All1\LuModels\Support\Ui::label($c['Field']) }}</dt>
+                    <dd class="mt-1 text-sm text-zinc-800">
+                        @if ($value === null)
+                            <span class="text-zinc-400">—</span>
+                        @elseif ($c['input_type'] === 'checkbox')
+                            {{ $value ? '✓' : '—' }}
+                        @elseif ($value instanceof \DateTimeInterface)
+                            {{ $value->format('Y-m-d H:i') }}
+                        @elseif ($c['input_type'] === 'textarea')
+                            <div class="whitespace-pre-wrap">{{ is_array($value) ? json_encode($value, JSON_PRETTY_PRINT) : $value }}</div>
+                        @else
+                            {{ is_array($value) ? json_encode($value) : $value }}
+                        @endif
+                    </dd>
+                </div>
+            @endforeach
+        </dl>
+
+        @if ($model->getRelations() !== [])
+            <x-lu_models::ui.heading size="lg" level="2">{{ __('Relationships') }}</x-lu_models::ui.heading>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 @foreach ($model->getRelations() as $relation => $items)
-                    <div class="p-4 border rounded-lg bg-gray-50">
-                        <h3 class="text-lg font-semibold text-zinc-700">{{ ucfirst($relation) }}</h3>
-                        <ul class="list-disc list-inside">
-                            @if($items)
-                                @forelse ($items as $item)
-                                    <li class="text-zinc-600">{{ $item->name ?? 'Unnamed Item' }}</li>
-                                @empty
-                                    <li class="text-zinc-400">No related data found.</li>
-                                @endforelse
-                            @else
-                                <li class="text-zinc-400">No related data found.</li>
-                            @endif
+                    <div class="rounded-lg border border-zinc-200 bg-white p-4">
+                        <h3 class="text-sm font-semibold text-zinc-700">{{ \All1\LuModels\Support\Ui::label($relation) }}</h3>
+                        <ul class="mt-2 flex flex-wrap gap-1">
+                            @forelse (is_iterable($items) ? $items : array_filter([$items]) as $item)
+                                <li><x-lu_models::ui.badge>{{ $item->name ?? $item->title ?? ('#'.$item->getKey()) }}</x-lu_models::ui.badge></li>
+                            @empty
+                                <li class="text-sm text-zinc-400">{{ __('None') }}</li>
+                            @endforelse
                         </ul>
                     </div>
                 @endforeach
             </div>
+        @endif
 
-            <div class="mt-6 text-right">
-                <a href="{{ route('lu::web.resources', [$route_prefix, 'edit', $model->id]) }}" 
-                   class="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600">
-                   Edit
-                </a>
-            </div>
+        <div class="flex justify-end">
+            <x-lu_models::ui.menu-item :href="route('lu::'.$writeType.'.resources.destroy', [$route_prefix, 'destroy', $model->getKey()])" method="DELETE" variant="danger" :confirm="__('Delete this record?')" class="inline-block">{{ __('Delete') }}</x-lu_models::ui.menu-item>
         </div>
-    </x-slot>
-
+    </div>
 </x-lu_models::dynamic-layout>

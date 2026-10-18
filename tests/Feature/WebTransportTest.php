@@ -38,6 +38,64 @@ class WebTransportTest extends TestCase
         $this->actingAs($this->user)->get($this->url('index'))->assertOk()->assertSee('Hello');
     }
 
+    public function test_the_index_shows_the_models_index_columns_and_nothing_hidden(): void
+    {
+        $post = Post::create(['user_id' => $this->user->id, 'title' => 'Hello', 'body' => 'the body']);
+        $post->forceFill(['secret_token' => 'TOKEN'])->save();
+
+        $html = $this->actingAs($this->user)->get($this->url('index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('>Title<', strip_tags($html, '<a><th>') === $html ? $html : $html, 'the Title header');
+        $this->assertStringContainsString('Created At', $html);
+        $this->assertStringNotContainsString('User Id', $html, 'index_columns names id, title and created_at only');
+        $this->assertStringNotContainsString('the body', $html, 'body is not readable on the index');
+        $this->assertStringNotContainsString('TOKEN', $html);
+        $this->assertStringContainsString(route('lu::web.resources', ['posts', 'edit', $post->id]), $html, 'the row links to its edit page by plain key');
+        $this->assertStringContainsString('sort=title', $html, 'the headers sort');
+    }
+
+    public function test_the_show_page_renders_what_show_may_read(): void
+    {
+        $post = Post::create(['user_id' => $this->user->id, 'title' => 'Hello', 'body' => 'the body']);
+        $post->forceFill(['secret_token' => 'TOKEN'])->save();
+
+        $html = $this->actingAs($this->user)->get($this->url('show', $post->id))->assertOk()->getContent();
+
+        $this->assertStringContainsString('the body', $html);
+        $this->assertStringContainsString('Hello', $html);
+        $this->assertStringNotContainsString('TOKEN', $html);
+        $this->assertStringNotContainsString('Secret Token', $html);
+    }
+
+    public function test_the_forms_come_from_the_operations_schema(): void
+    {
+        $html = $this->actingAs($this->user)->get($this->url('create'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<input[^>]*name="title"[^>]*required/', $html);
+        $this->assertMatchesRegularExpression('/<input[^>]*name="title"[^>]*maxlength="120"/', $html, 'from the max:120 rule');
+        $this->assertStringContainsString('Shown as the headline', $html, 'help text from $lu_help');
+        $this->assertMatchesRegularExpression('/<textarea[^>]*name="body"/', $html);
+        $this->assertStringNotContainsString('name="user_id"', $html, 'injected by the package');
+        $this->assertStringNotContainsString('name="secret_token"', $html);
+        $this->assertStringNotContainsString('name="id"', $html);
+
+        $post = Post::create(['user_id' => $this->user->id, 'title' => 'Old title', 'body' => 'old body']);
+        $html = $this->actingAs($this->user)->get($this->url('edit', $post->id))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<input[^>]*name="title"[^>]*value="Old title"/', $html);
+        $this->assertStringContainsString('old body</textarea>', $html);
+        $this->assertStringContainsString(route('lu::web.resources.update', ['posts', 'update', $post->id]), $html);
+    }
+
+    public function test_the_toast_shows_once(): void
+    {
+        $response = $this->actingAs($this->user)->post($this->url('store'), ['title' => 'Fresh']);
+        $response->assertRedirect();
+
+        $this->actingAs($this->user)->get($response->headers->get('Location'))->assertOk()->assertSee('saved your information');
+        $this->actingAs($this->user)->get($this->url('index'))->assertOk()->assertDontSee('saved your information');
+    }
+
     public function test_a_get_request_cannot_destroy_a_row(): void
     {
         $post = Post::create(['user_id' => $this->user->id, 'title' => 'Keep me']);

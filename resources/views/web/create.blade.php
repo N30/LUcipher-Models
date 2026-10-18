@@ -1,62 +1,19 @@
-<?php if (!isset($layout)) {
-    $layout = config('lu::models.layout'); //config('models.layout');
-} else {
-    $layout = 'lu_models::empty-layout';
-}
+<?php
+$layout = isset($layout) ? 'lu_models::empty-layout' : \All1\LuModels\Support\Ui::layout();
+$lang = config('lu::models.lang_prefix');
+$writeType = $controller_type === 'spa' ? 'web' : $controller_type;
 ?>
 <x-lu_models::dynamic-layout :layout="$layout">
+    <x-lu_models::ui.toasts />
 
+    <div class="lu-models lu-create space-y-4">
+        <x-lu_models::ui.heading>{{ __($lang.ucfirst($action)).' '.__($lang.Str::singular($route_prefix)) }}</x-lu_models::ui.heading>
+        <x-lu_models::ui.separator />
 
-    
-        <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-            {{ __(  config("lu::models.lang_prefix") . $action) . ' ' . Str::singular(__( config("lu::models.lang_prefix") . $route_prefix)) }}
-        </h2>
-    
-
-
-    @if (isset($columns))
-
-        <form wire:submit='beforeStore' action="{{ route('lu::web.resources', [$route_prefix, 'store']) }}" method="POST">
-            @csrf
-
-            @foreach ($columns as $c)
-                
-                @php
-                    
-
-                    $label = str_replace('_', ' ', ucfirst($c['Field']));
-
-                @endphp
-                @if (!in_array($c['Field'], ['id', 'created_at', 'updated_at', 'user_id', 'slug']))
-                    <div class="p-2">
-                        @if ($c['required'])
-                            <span class="text-red-500 absolute -mt-1 -ml-2">*</span>
-                        @endif
-                        @if ($c['input_type'] == 'textarea')
-                            <flux:textarea :maxlenght="$c['max_length']" :name="$c['Field']" wire:model="model_attributes.{{ $c['Field'] }}"  
-                                :type="$c['Type']" :label="$label" :description="$c['description']"
-                                :required="$c['required']" />
-                        @elseif($c['input_type'] == 'date')
-                            <flux:date-picker :maxlenght="$c['max_length']" :name="$c['Field']" wire:model="model_attributes.{{ $c['Field'] }}"  
-                                 :type="$c['Type']" :label="$label"
-                                :description="$c['description']" :required="$c['required']" />
-                        @else
-                            <flux:input :placeholder="'e.g. '.$c['sample']" :maxlenght="$c['max_length']" wire:model="model_attributes.{{ $c['Field'] }}"  
-                                :name="$c['Field']"   :type="$c['Type']"
-                                :label="$label" :description="$c['description']" :required="$c['required']" />
-                        @endif
-                    </div>
-                @endif
-            @endforeach
-
-            <div class="p-2">
-                <flux:button type="submit" class="bg-green-500 text-white">Save</flux:button>
-            </div>
-
-        </form>
-    @else
-        NO DATA FOUND!
-
-    @endif
-
+        @include('lu_models::web._form', [
+            'submit' => route('lu::'.$writeType.'.resources.store', [$route_prefix, 'store']),
+            'method' => 'POST',
+            'cancel' => route('lu::'.$controller_type.'.resources', [$route_prefix, 'index']),
+        ])
+    </div>
 </x-lu_models::dynamic-layout>

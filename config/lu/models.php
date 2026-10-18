@@ -1,7 +1,14 @@
 <?php
 
 return [
-    'layout' => 'components.layouts.app',
+    'layout' => 'components.layouts.app', // the host layout the pages extend (ui.layout wins when set)
+    // The UI seam: the shipped blades use the lu_models::ui.* primitives, plain HTML with Tailwind classes by
+    // default, Flux's free components when flux is on and livewire/flux is installed. Publish the views
+    // (--tag=lu-models-views) for anything more.
+    'ui' => [
+        'flux' => false,
+        'layout' => null,
+    ],
     'api_prefix' => '', // like v1 it goes right after /api
     // GET /api/openapi.json describes the exposed models (OpenAPI 3.1). It sits behind the API's own
     // auth unless public; title defaults to "{app.name} API".
