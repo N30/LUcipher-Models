@@ -33,7 +33,8 @@ final class ResourceRoutes
      * routes are named "{name}.store", "{name}.update" and "{name}.destroy". All of them share
      * the same URI shape, and controllers read the transport from the segment after "lu::".
      */
-    public static function register(string $uri, string $controller, string $name, bool $actionOptional = true, ?Router $router = null): void
+    /** @param  list<string>  $writeMiddleware  middleware for the store/update/destroy routes only (e.g. a write rate limit) */
+    public static function register(string $uri, string $controller, string $name, bool $actionOptional = true, ?Router $router = null, array $writeMiddleware = []): void
     {
         $router ??= Route::getFacadeRoot();
         $action = $actionOptional ? '{action?}' : '{action}';
@@ -44,12 +45,15 @@ final class ResourceRoutes
             ->name($name);
         $router->post($path, $controller)
             ->where('action', implode('|', self::actionsFor('POST')))
+            ->middleware($writeMiddleware)
             ->name($name.'.store');
         $router->match(['PUT', 'PATCH'], $path, $controller)
             ->where('action', implode('|', self::actionsFor('PUT')))
+            ->middleware($writeMiddleware)
             ->name($name.'.update');
         $router->delete($path, $controller)
             ->where('action', implode('|', self::actionsFor('DELETE')))
+            ->middleware($writeMiddleware)
             ->name($name.'.destroy');
     }
 

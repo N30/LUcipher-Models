@@ -3,7 +3,11 @@
 namespace All1\LuModels\Providers;
 
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\Exposure;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -45,7 +49,28 @@ class LuModelsServiceProvider extends ServiceProvider
 
         Blade::componentNamespace('All1\\LuModels\\View\\Components', 'lu_models');
 
+        $this->registerRateLimiters();
+
         $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php');
+    }
+
+    /**
+     * One named limiter per transport plus one for writes, read from lu::models.rate_limits at
+     * request time (so a published config or a runtime change applies without a reboot). The key
+     * is the signed-in user, or the IP for guests.
+     */
+    protected function registerRateLimiters(): void
+    {
+        foreach ([...Exposure::TRANSPORTS, 'writes'] as $name) {
+            RateLimiter::for('lu-models-'.$name, function (Request $request) use ($name) {
+                $perMinute = config('lu::models.rate_limits.'.$name);
+                if ($perMinute === null || $perMinute === false) {
+                    return Limit::none();
+                }
+
+                return Limit::perMinute((int) $perMinute)->by($name.'|'.($request->user()?->getAuthIdentifier() ?? 'guest:'.$request->ip()));
+            });
+        }
     }
 
     /**

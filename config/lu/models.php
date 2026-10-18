@@ -8,6 +8,10 @@ return [
     // 'api_middleware'=> [this one is mandatory for security reasons, some models may need access publicly but API never without a token]
     'spa_middleware' => ['web', 'auth'],
 
+    // Where discovery looks for models (Navlist, expose_all, lu:models). null means app_path('Models');
+    // the namespace is read from each file, so any folder works.
+    'models_path' => null,
+
     // Which models the transports may serve. Nothing is exposed until a model is listed here
     // (class => ['web', 'rest', 'api', 'spa'], or true for every transport) or declares
     // `public $lu_transports = ['web', 'api'];` itself. The two are a union.
@@ -22,6 +26,17 @@ return [
     // without one is denied. The user method below bypasses policies (the LuCipher convention);
     // set it to null to turn the bypass off.
     'super_admin_method' => 'is_super_admin',
+
+    // Requests per minute, per signed-in user (per IP for guests), on each transport, and a separate
+    // budget for writes (store/update/destroy) on all of them. null turns a limiter off. Enforced by
+    // Laravel's throttle middleware through the named limiters lu-models-{transport} / lu-models-writes.
+    'rate_limits' => [
+        'web' => 120,
+        'rest' => 120,
+        'api' => 60,
+        'spa' => 120,
+        'writes' => 20,
+    ],
 
     // If you avorride action clasess you might need to implement these in your own or use your own logic
     // Also individual model [not-built yet] settings will override these!
