@@ -244,23 +244,30 @@ class LuModel extends Model
 
     public function viewFolder()
     {
-        $potential_folder = strtolower(Str::plural(class_basename($this)));
-        if (File::exists(resource_path('views/'.$potential_folder))) {
-            $folder = $potential_folder;
-        } else {
-            // Folder does not exist
-            $folder = 'lu_models::web';
-        }
-
-        return $folder;
+        return static::viewFolderFor($this);
     }
 
     public function viewFile($action)
     {
-        if (view()->exists($this->viewFolder().'.'.$action)) {
-            return $this->viewFolder().'.'.$action;
-        } else {
-            return 'lu_models::web.'.$action;
-        }
+        return static::viewFileFor($this, $action);
+    }
+
+    /**
+     * The app view folder for a model (`resources/views/{plural-lowercase}`) when it exists, else the
+     * package's web views. Works for any Eloquent model, not only LuModel subclasses.
+     */
+    public static function viewFolderFor(Model $model): string
+    {
+        $potential_folder = strtolower(Str::plural(class_basename($model)));
+
+        return File::exists(resource_path('views/'.$potential_folder)) ? $potential_folder : 'lu_models::web';
+    }
+
+    /** The view for $action: the app's `{folder}.{action}` when it exists, else the package's. */
+    public static function viewFileFor(Model $model, string $action): string
+    {
+        $candidate = static::viewFolderFor($model).'.'.$action;
+
+        return view()->exists($candidate) ? $candidate : 'lu_models::web.'.$action;
     }
 }

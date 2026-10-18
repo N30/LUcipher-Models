@@ -3,6 +3,7 @@
 namespace All1\LuModels\Http\Controllers;
 
 use All1\LuModels\Http\Controllers\Api\ApiResourceController;
+use All1\LuModels\Models\LuModel;
 use Illuminate\Http\Request;
 use Str;
 
@@ -105,10 +106,9 @@ class ResourceController extends ApiResourceController
             $view = view($this->controller_type.'.'.Str::plural($this->route_prefix).'.'.$this->action, ['data' => $data]);
         }
         // custom
-        elseif (view()->exists($this->model->viewFile($this->action))) {
-            $view = view($this->model->viewFile($this->action), ['data' => $data]);
-        } else {
-            $view = view($this->model->viewFile($this->action), ['data' => $data]);
+        // custom folder named after the model, else the package view (works for plain Eloquent models too)
+        else {
+            $view = view(LuModel::viewFileFor($this->model, $this->action), ['data' => $data]);
         }
 
         return $view
