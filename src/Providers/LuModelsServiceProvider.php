@@ -2,59 +2,77 @@
 
 namespace All1\LuModels\Providers;
 
-// use Illuminate\Support\ServiceProvider;
-
-use All1\LuUnite\Providers\LuUniteServiceProvider;
+use All1\LuModels\Services\LuModels;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
-// use ReflectionClass;
-// use ReflectionException;
-
-class LuModelsServiceProvider extends LuUniteServiceProvider
+/**
+ * Registers everything the package ships from its own directory: config, views, Blade components,
+ * the LuModels service and the resource routes. It needs nothing from lucipher/unite and sets no
+ * environment variable, so the package installs from Packagist or any VCS repository.
+ */
+class LuModelsServiceProvider extends ServiceProvider
 {
-    /* didnt work as expected so manually added to boot
-     protected $listen = [
-         \All1\LuModels\Events\Created::class => [
-             \All1\LuModels\Listeners\CreationAftermath::class,
-         ],
-     ];
-     */
+    public const CONFIG_KEY = 'lu::models';
 
     public function register(): void
     {
-        $this->lu_addon_provider_register($this, 'models', [
-            'has_service' => true,
-            //     'has_facade'=>true,
-        ]);
+        $this->mergeConfigFrom(__DIR__.'/../../config/lu/models.php', self::CONFIG_KEY);
 
-        // I don't think I actually need this
-        // Automatically bind all actions in the Actions folder
-        /*foreach (glob(__DIR__ . '/../Actions/*.php') as $file) {
-           $class = 'All1\\LuModels\\Actions\\' . pathinfo($file, PATHINFO_FILENAME);
+        $this->mergePublishedConfig();
 
-           if (class_exists($class)) {
-               $this->app->bind($class, function () use ($class) {
-                   return new $class();
-               });
-           }
-        }*/
-
+        $this->app->singleton(LuModels::class, fn () => new LuModels);
+        $this->app->alias(LuModels::class, 'LuModels');
     }
 
     public function boot(): void
     {
+        // Config set between register() and boot() (Testbench does this; so may another provider)
+        // must not hide the app's published file: fold it once more. The operation is idempotent.
+        $this->mergePublishedConfig();
 
-        $this->lu_addon_provider_boot($this, 'models', [
-            'register_views' => true,
-            'register_blade_components' => true,
-        ]);
+        $this->publishes([
+            __DIR__.'/../../config/lu/models.php' => config_path('lu/models.php'),
+        ], 'lu-models-config');
 
-        // unite registers the class components under the alias "models"; every shipped blade writes
-        // <x-lu_models::…>, so without this alias Blade fell back to anonymous components and the index
-        // table never saw its $db_columns. Phase 2 moves all registration into this provider.
+        $this->publishes([
+            __DIR__.'/../../resources/views' => resource_path('views/vendor/lu_models'),
+        ], 'lu-models-views');
+
+        $this->loadViewsFrom(__DIR__.'/../../resources/views', 'lu_models');
+        $this->loadViewsFrom(__DIR__.'/../../resources/views/components', 'lu_models');
+
         Blade::componentNamespace('All1\\LuModels\\View\\Components', 'lu_models');
 
-        $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php'); // or api.php
+        $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php');
+    }
 
+    /**
+     * Laravel loads a published config/lu/models.php under "lu.models"; fold it over the package
+     * defaults so config('lu::models.*') keeps seeing the app's overrides, as it always has.
+     */
+    protected function mergePublishedConfig(): void
+    {
+        $published = $this->app['config']->get('lu.models');
+        if (is_array($published)) {
+            $this->app['config']->set(self::CONFIG_KEY, array_replace(
+                $this->app['config']->get(self::CONFIG_KEY, []),
+                $published,
+            ));
+        }
+    }
+
+    /**
+     * The /spa transport mounts a Livewire component. Livewire is a suggested dependency, so an app
+     * that enables the transport without it gets this message instead of a class-not-found.
+     *
+     * @throws \LogicException
+     */
+    public static function assertLivewireInstalled(string $class = Livewire::class): void
+    {
+        if (! class_exists($class)) {
+            throw new \LogicException('lu_models: lu::models.enable_spa_routes is on but livewire/livewire is not installed. Run `composer require livewire/livewire` or turn the SPA transport off.');
+        }
     }
 }

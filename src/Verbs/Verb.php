@@ -4,7 +4,6 @@ namespace All1\LuModels\Verbs;
 
 use All1\LuModels\Services\LuModels;
 use Illuminate\Database\Eloquent\Model;
-use Thunk\Verbs\Event;
 
 /**
  * The shared shape of the five CRUD+I Verbs (Creation, Revelation, Updation, Deletion, Annexation).
@@ -14,8 +13,12 @@ use Thunk\Verbs\Event;
  * dynamic-property deprecations), and the app-level Laravel Event override is looked up by the
  * MODEL's name (App\Events\CRUD\UserCreated), as documented, rather than the Verb's own name
  * (App\Events\CRUD\CreationCreated). Every handle() returns the service.
+ *
+ * These are not event-sourced. 3.0.x extended Thunk\Verbs\Event without ever firing through it (the
+ * study §4 traces why that could not work); the base class contributed one unused property and an
+ * undeclared dependency, so it is gone. An app that wants a durable log fires its own flat event.
  */
-abstract class Verb extends Event
+abstract class Verb
 {
     /** @var LuModels */
     public $service;

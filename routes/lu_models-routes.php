@@ -4,6 +4,7 @@ use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Http\Controllers\Api\ApiRestController;
 use All1\LuModels\Http\Controllers\ResourceController;
 use All1\LuModels\Livewire\Master;
+use All1\LuModels\Providers\LuModelsServiceProvider;
 use All1\LuModels\Routing\ResourceRoutes;
 use Illuminate\Routing\Router;
 
@@ -52,6 +53,7 @@ if (config('lu::models.enable_api_routes')) {
     }
 }
 if (config('lu::models.enable_spa_routes')) {
+    LuModelsServiceProvider::assertLivewireInstalled();
     // Route::middleware(['auth'])->group(function () {
     Route::middleware(config('lu::models.spa_middleware'))->group(function () {
         Route::any('spa/{model}/{action?}/{id?}', Master::class)->name('lu::spa.resources');

@@ -4,30 +4,24 @@
 	"type": "library",
 	"license": "proprietary",
 	"require": {
-		"php": "^8.2",
-		"illuminate/support": "^11.0|^12.0",
 		"illuminate/database": "^11.0|^12.0",
-		"lucipher/unite": "^3.0"
+		"illuminate/support": "^11.0|^12.0",
+		"lorisleiva/laravel-actions": "^2.0",
+		"php": "^8.2"
 	},
 	"require-dev": {
-		"hirethunk/verbs": "^0.9",
 		"larastan/larastan": "^3.0",
 		"laravel/pint": "^1.0",
 		"livewire/flux": "^2.0",
 		"livewire/livewire": "^4.0",
-		"lorisleiva/laravel-actions": "^2.0",
 		"orchestra/testbench": "^9.0|^10.0",
 		"phpunit/phpunit": "^11.0"
 	},
-	"repositories": [
-		{
-			"type": "path",
-			"url": "../lu_unite",
-			"options": {
-				"symlink": true
-			}
-		}
-	],
+	"suggest": {
+		"lucipher/unite": "LuCipher Universal multi-tenant bootstrap. Optional: the package registers its own config, views, components and routes.",
+		"livewire/livewire": "Required only when lu::models.enable_spa_routes is on (the /spa transport is a Livewire component).",
+		"livewire/flux": "The shipped blades use Flux components until the default theme lands."
+	},
 	"scripts": {
 		"test": "phpunit",
 		"coverage": "phpunit --coverage-text --coverage-html build/coverage/html",
@@ -46,18 +40,18 @@
 			"All1\\LuModels\\Database\\Seeders\\": "database/seeders/"
 		}
 	},
+	"autoload-dev": {
+		"psr-4": {
+			"All1\\LuModels\\Tests\\": "tests/",
+			"App\\": "tests/Fixtures/app/"
+		}
+	},
 	"minimum-stability": "stable",
 	"extra": {
 		"laravel": {
 			"providers": [
 				"All1\\LuModels\\Providers\\LuModelsServiceProvider"
 			]
-		}
-	},
-	"autoload-dev": {
-		"psr-4": {
-			"All1\\LuModels\\Tests\\": "tests/",
-			"App\\": "tests/Fixtures/app/"
 		}
 	}
 }
