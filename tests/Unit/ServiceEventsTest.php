@@ -4,11 +4,11 @@ namespace All1\LuModels\Tests\Unit;
 
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Tests\Fixtures\Widget;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
 use Illuminate\Http\Request;
 
 /** §5.1 — fireVerbs() fires the action's own {model}.{past} string event. */
-class ServiceEventsTest extends TestCase
+class ServiceEventsTest extends UnitTestCase
 {
     protected function setUp(): void
     {

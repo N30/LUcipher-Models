@@ -6,11 +6,11 @@ use All1\LuModels\Actions\Create;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Tests\Fixtures\Gadget;
 use All1\LuModels\Tests\Fixtures\Widget;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
 use App\LuModels\Actions\CRUD\CreateGadget;
 
 /** §5.2 — the Action override is one class name, checked and run. */
-class ActionOverrideTest extends TestCase
+class ActionOverrideTest extends UnitTestCase
 {
     protected function setUp(): void
     {

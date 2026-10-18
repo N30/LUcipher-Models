@@ -3,9 +3,9 @@
 namespace All1\LuModels\Tests\Unit;
 
 use All1\LuModels\Models\LuModel;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
 
-class LuModelTest extends TestCase
+class LuModelTest extends UnitTestCase
 {
     public function test_get_namespace_from_file_extracts_namespace(): void
     {

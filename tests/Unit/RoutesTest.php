@@ -6,7 +6,7 @@ use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Http\Controllers\Api\ApiRestController;
 use All1\LuModels\Http\Controllers\ResourceController;
 use All1\LuModels\Routing\ResourceRoutes;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** §5.4 — the shipped route file, method-scoped. */
-class RoutesTest extends TestCase
+class RoutesTest extends UnitTestCase
 {
     private Router $router;
 

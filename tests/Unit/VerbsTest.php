@@ -10,7 +10,7 @@ use All1\LuModels\Tests\Fixtures\Gadget;
 use All1\LuModels\Tests\Fixtures\PlainWidget;
 use All1\LuModels\Tests\Fixtures\UnsafeWidget;
 use All1\LuModels\Tests\Fixtures\Widget;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
 use All1\LuModels\Verbs\Annexation;
 use All1\LuModels\Verbs\Creation;
 use All1\LuModels\Verbs\Deletion;
@@ -20,7 +20,7 @@ use All1\LuModels\Verbs\Verb;
 use App\Events\CRUD\GadgetCreated;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-class VerbsTest extends TestCase
+class VerbsTest extends UnitTestCase
 {
     protected function setUp(): void
     {

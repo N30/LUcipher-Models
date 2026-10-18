@@ -2,91 +2,44 @@
 
 namespace All1\LuModels\Tests;
 
-use Illuminate\Config\Repository;
-use Illuminate\Container\Container;
-use Illuminate\Database\Capsule\Manager as Capsule;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Events\Dispatcher;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Facade;
-use PHPUnit\Framework\TestCase as BaseTestCase;
+use All1\LuModels\Providers\LuModelsServiceProvider;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Orchestra\Testbench\TestCase as Orchestra;
 
-abstract class TestCase extends BaseTestCase
+abstract class TestCase extends Orchestra
 {
-    protected ?Container $app = null;
+    use RefreshDatabase;
 
-    /** @var list<array{0:string,1:array}> every string event dispatched, as [name, payload] */
-    protected array $firedStringEvents = [];
-
-    /** @var list<object> every object event dispatched */
-    protected array $firedObjectEvents = [];
-
-    /**
-     * A minimal container standing in for the Laravel app: events, config, request and the
-     * facade root. Records every dispatched event.
-     */
-    protected function bootContainer(array $config = [], ?Request $request = null): Container
+    protected function getPackageProviders($app): array
     {
-        $this->app = $app = new Container;
-        Container::setInstance($app);
-        $app->instance('app', $app);
-        $app->instance(Container::class, $app);
-
-        $events = new Dispatcher($app);
-        $events->listen('*', function ($name, $payload) {
-            if (is_object($payload[0] ?? null) && $payload[0] instanceof $name) {
-                $this->firedObjectEvents[] = $payload[0];
-            } else {
-                $this->firedStringEvents[] = [$name, $payload];
-            }
-        });
-        $app->instance('events', $events);
-        $app->instance('config', new Repository($config));
-        $app->instance('request', $request ?? Request::create('/', 'GET'));
-
-        Facade::clearResolvedInstances();
-        Facade::setFacadeApplication($app);
-
-        return $app;
+        return [LuModelsServiceProvider::class];
     }
 
-    /** An in-memory SQLite connection with a `widgets` table, wired into Eloquent. */
-    protected function bootDatabase(): Capsule
+    protected function defineEnvironment($app): void
     {
-        $app = $this->app ?? $this->bootContainer();
+        $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+        $app['config']->set('database.default', 'testing');
+        $app['config']->set('database.connections.testing', [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ]);
+        $app['config']->set('auth.providers.users.model', User::class);
 
-        $capsule = new Capsule($app);
-        $capsule->addConnection(['driver' => 'sqlite', 'database' => ':memory:']);
-        $capsule->setEventDispatcher($app->make('events'));
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-
-        $capsule->schema()->create('widgets', function ($table) {
-            $table->increments('id');
-            $table->string('name')->nullable();
-            $table->integer('is_admin')->default(0);
-        });
-
-        return $capsule;
+        foreach (['web', 'rest', 'api', 'spa'] as $transport) {
+            $app['config']->set("lu::models.enable_{$transport}_routes", true);
+        }
+        $app['config']->set('lu::models.web_middleware', ['web']);
+        $app['config']->set('lu::models.spa_middleware', ['web']);
+        $app['config']->set('lu::models.allow_unauthenticated_api', true);
+        $app['config']->set('lu::models.layout', 'fixture::layouts.app');
+        $app['view']->addNamespace('fixture', __DIR__.'/Fixtures/resources/views');
     }
 
-    /** @return list<string> */
-    protected function stringEventNames(): array
+    protected function defineDatabaseMigrations(): void
     {
-        return array_map(fn ($e) => $e[0], $this->firedStringEvents);
-    }
-
-    protected function tearDown(): void
-    {
-        Model::clearBootedModels();
-        Model::unsetEventDispatcher();
-        Facade::clearResolvedInstances();
-        Facade::setFacadeApplication(null);
-        Container::setInstance(null);
-        $this->app = null;
-        $this->firedStringEvents = [];
-        $this->firedObjectEvents = [];
-
-        parent::tearDown();
+        $this->loadMigrationsFrom(__DIR__.'/Fixtures/database/migrations');
     }
 }

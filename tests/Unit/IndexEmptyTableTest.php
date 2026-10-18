@@ -4,12 +4,12 @@ namespace All1\LuModels\Tests\Unit;
 
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Tests\Fixtures\Widget;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Http\Request;
 
 /** §3 — index on an empty table used to 500 on $data[0]. */
-class IndexEmptyTableTest extends TestCase
+class IndexEmptyTableTest extends UnitTestCase
 {
     protected function setUp(): void
     {

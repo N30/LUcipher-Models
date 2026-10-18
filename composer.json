@@ -11,20 +11,30 @@
 		"lucipher/unite": "^3.0"
 	},
 	"require-dev": {
-		"phpunit/phpunit": "^11.0",
-		"illuminate/routing": "^11.0|^12.0",
-		"illuminate/events": "^11.0|^12.0",
-		"illuminate/config": "^11.0|^12.0"
+		"hirethunk/verbs": "^0.9",
+		"larastan/larastan": "^3.0",
+		"laravel/pint": "^1.0",
+		"livewire/flux": "^2.0",
+		"livewire/livewire": "^4.0",
+		"lorisleiva/laravel-actions": "^2.0",
+		"orchestra/testbench": "^9.0|^10.0",
+		"phpunit/phpunit": "^11.0"
 	},
 	"repositories": [
 		{
 			"type": "path",
 			"url": "../lu_unite",
-			"options": { "symlink": true }
+			"options": {
+				"symlink": true
+			}
 		}
 	],
 	"scripts": {
-		"test": "phpunit"
+		"test": "phpunit",
+		"coverage": "phpunit --coverage-text --coverage-html build/coverage/html",
+		"lint": "pint --test",
+		"lint:fix": "pint",
+		"analyse": "phpstan analyse --memory-limit=1G"
 	},
 	"replace": {
 		"n30/lu_models": "self.version",
@@ -33,7 +43,6 @@
 	"autoload": {
 		"psr-4": {
 			"All1\\LuModels\\": "src/",
-			"All1\\LuModels\\Tests\\": "tests/",
 			"All1\\LuModels\\Database\\Factories\\": "database/factories/",
 			"All1\\LuModels\\Database\\Seeders\\": "database/seeders/"
 		}
@@ -44,6 +53,12 @@
 			"providers": [
 				"All1\\LuModels\\Providers\\LuModelsServiceProvider"
 			]
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"All1\\LuModels\\Tests\\": "tests/",
+			"App\\": "tests/Fixtures/app/"
 		}
 	}
 }

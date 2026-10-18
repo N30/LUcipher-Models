@@ -7,7 +7,9 @@ use All1\LuModels\Http\Controllers\ResourceController;
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Tests\Fixtures\Widget;
-use All1\LuModels\Tests\TestCase;
+use All1\LuModels\Tests\UnitTestCase;
+use Illuminate\Auth\RequestGuard;
+use Illuminate\Contracts\Auth\Factory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
@@ -24,7 +26,7 @@ use Illuminate\Session\Store;
  * Warnings are turned into exceptions, as Laravel's HandleExceptions does, so an undefined
  * property fails the test instead of passing silently.
  */
-class ControllerWriteTest extends TestCase
+class ControllerWriteTest extends UnitTestCase
 {
     private Router $router;
 
@@ -55,13 +57,10 @@ class ControllerWriteTest extends TestCase
 
         $this->session = new Store('test', new ArraySessionHandler(10));
         $app->instance('session', $this->session);
-        $app->instance('auth', new class
-        {
-            public function check(): bool
-            {
-                return false;
-            }
-        });
+        // The real auth() helper returns a Factory|Guard: a RequestGuard that never resolves a user.
+        $guest = new RequestGuard(fn () => null, Request::create('/'));
+        $app->instance('auth', $guest);
+        $app->instance(Factory::class, $guest);
 
         Widget::query()->insert(['id' => 1, 'name' => 'Old', 'is_admin' => 0]);
     }
