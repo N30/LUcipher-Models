@@ -19,7 +19,6 @@
 
         <form action="{{ route('lu::api.resources', [$route_prefix, 'store']) }}" method="POST" target="resultFrame">
             @csrf
-            @method('PUT')
 
             @foreach ($columns as $c)
                 

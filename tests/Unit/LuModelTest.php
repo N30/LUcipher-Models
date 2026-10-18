@@ -31,6 +31,9 @@ class LuModelTest extends TestCase
     {
         $model = new class extends LuModel {};
 
+        // Defaults only. What the write safeties actually do (a non-fillable key is not written,
+        // and a model without the flags fails closed) is asserted by behaviour in VerbsTest.
+
         $this->assertTrue($model->creation_safety);
         $this->assertTrue($model->update_safety);
         $this->assertTrue($model->read_safety);

@@ -2,50 +2,21 @@
 
 namespace All1\LuModels\Verbs;
 
-use Thunk\Verbs\Event;
-
-class Revelation extends Event
+class Revelation extends Verb
 {
-    public $model;
-    public $data;
-    public $controller_type;
-    public $service;
-
-    public function __construct($service, $model,$data,$controller_type)
-    {
-        $this->service = $service;
-        $this->model = $model;
-        $this->data = $data;
-        $this->controller_type = $controller_type;
-    }
-
     public function handle()
     {
         $model = $this->model;
-        $data = $this->data;
-        $controller_type = $this->controller_type;
 
-        if($model->revelation_safety) {
-            //$model->read($data);
-            //$model->fill($data);
-            //$model->save();
-        }
-     
-        $this->model = $this->service->controller_show( $this->model);
+        //`read_safety` (3.0.0 tested a misspelled, undeclared `revelation_safety`) is reserved:
+        //a read writes nothing, so there is no unsafe branch to guard here.
 
-         
+        $this->model = $this->service->controller_show($this->model);
+
         //See Events/README
-        // Dispatch Laravel built-in event for side effects
-        if(class_exists('\App\Events\\'.$model->action_folder.'\\'.ucfirst(class_basename($this))."Read" ) ) {
-            $event = '\App\Events\\'.$model->action_folder.'\\'.ucfirst(class_basename($this))."Read";
-              event( new $event($model, $data, $controller_type));
-        }else { //run that action
-              event(new \All1\LuModels\Events\Read($model, $data, $controller_type));
-        }
- 
-        return $this->service;
-        //after this verbs execute
-        //event(strtolower(class_basename($this)).'.Updated', ['data' => $data]); //<-- THIS IS THE EVENT YOU WANT TO LISTEN FOR
+        // Dispatch Laravel built-in event for side effects //example: App\Events\CRUD\UserRead
+        $this->dispatchEvent($model, 'Read', \All1\LuModels\Events\Read::class);
 
+        return $this->service;
     }
 }

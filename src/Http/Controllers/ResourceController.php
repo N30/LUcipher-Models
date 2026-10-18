@@ -15,8 +15,9 @@ class ResourceController extends ApiResourceController
     {
         
          
+        $this->guardMethod($request);
         $method = $request->method();
-        if($method=='GET') {
+        if($method=='GET' || $method=='HEAD') {
             return $this->chooseView( $this->{$this->action}($id));
         }else {
             
@@ -54,20 +55,45 @@ class ResourceController extends ApiResourceController
                 if($redirect_action=='back'){ 
                     return redirect()->back()->with('messages', [$result['message']]);
                 }else {
-                    return redirect()->route( request()->route()->getName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$result['id']??$result['data']->id ])->with('messages', [$result['message']]);
+                    return redirect()->route( $this->redirectRouteName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$this->redirectId($result) ])->with('messages', [$result['message']]);
                 }
             }else {
                 if($redirect_action=='back'){ 
                     return redirect()->back();
                 }else {
                     return redirect()
-                        ->route( request()->route()->getName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$result['data']->id ]);
+                        ->route( $this->redirectRouteName() ,[ 'model'=>$model, 'action'=>$redirect_action, 'id'=>$this->redirectId($result) ]);
                 } 
             }
             
         }
          
  
+    }
+
+    /**
+     * v3.0.1: the id to redirect to after a write. Store hands back an (encrypted) 'id'; update
+     * and destroy hand back the record in 'data'. 3.0.0 read $result['data']->id, which raised
+     * "Undefined property" (a 500) once the Verbs returned the service, and on a "Record not
+     * found" result, where 'data' is an empty array.
+     */
+    protected function redirectId(array $result)
+    {
+        if (isset($result['id'])) {
+            return $result['id'];
+        }
+        $record = self::recordOf($result['data'] ?? null);
+
+        return $record?->getKey();
+    }
+
+    /**
+     * v3.0.1: the redirect is followed with GET, so it is named after the transport's GET route
+     * ("lu::web.resources"), not the write route that handled the request ("….update").
+     */
+    protected function redirectRouteName(): string
+    {
+        return preg_replace('/\.(store|update|destroy)$/', '', request()->route()->getName());
     }
 
     public function chooseView( $data)

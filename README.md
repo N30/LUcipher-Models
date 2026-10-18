@@ -13,6 +13,7 @@ Alright let me write a 30 second documentation. Upon install package can read al
 /spa/{model}/{action}/{id?} LIVEWIRE!<br>
 /pwa/ -- coming soon.<br><br>
 /app/ -- requires NativePhp and LUcipher-Eloquent-Datanase-API-Driver pacakge<br>
+Since 3.0.1 each action answers only its own HTTP method, as Laravel resource routes do: GET index/create/show/edit, POST store, PUT|PATCH update, DELETE destroy (web, rest and api).<br>
 You'll see fully disfuncitonal blade UI but everything can be overrided and the idea of the package is to hit the ground running and override things as needed package checks app folder for custom routes, controllers, view files, policies, actions (laravel actinos), verbs (laravel verbs) otherwise uses default. It will eventually look good but I haven't spent anytime on UI.<br>
 <br>
 Laravel Universal open-sourced package with automatic API, HTTP, Livewire Controllers, Laravel Actions, Verbs, Policy Support. Increasing development time by automating CRUD operations from Modern SPA like components down to fully functioning API under the hood. The package automatically builds APIs from models, utilizes the API to build traditional HTTP controller, and then builds the Livewire using the same components including views.
