@@ -5,6 +5,7 @@ namespace All1\LuModels\Services;
 use All1\LuModels\Models\LuModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Str;
 
 class LuModels
@@ -61,7 +62,7 @@ class LuModels
             $this->controller_data['meta'] = LuModel::getMetaData($model_full_namespace);
 
             // $this->controller_data['columns'] = \Schema::getColumnListing($this->controller_data['model->getTable()) ;
-            $this->controller_data['columns'] = \DB::select('SHOW FULL COLUMNS FROM '.$this->model->getTable());
+            $this->controller_data['columns'] = self::schemaColumns($this->model->getTable(), $this->model->getConnectionName());
 
             $sample = null;
             if (in_array($this->controller_data['action'], ['create', 'edit', 'need_sample'])) {
@@ -97,6 +98,41 @@ class LuModels
         }
 
         return $this->controller_data;
+    }
+
+    /**
+     * Describe a table in the shape `SHOW FULL COLUMNS` used to return (Field, Type, Null, Key,
+     * Default, Extra, Comment), read through the portable schema builder so every driver works.
+     *
+     * @return array<int, object>
+     */
+    public static function schemaColumns(string $table, ?string $connection = null): array
+    {
+        $schema = Schema::connection($connection);
+        $primary = [];
+        $unique = [];
+        foreach ($schema->getIndexes($table) as $index) {
+            if ($index['primary']) {
+                $primary = array_merge($primary, $index['columns']);
+            } elseif ($index['unique'] && count($index['columns']) === 1) {
+                $unique[] = $index['columns'][0];
+            }
+        }
+
+        $columns = [];
+        foreach ($schema->getColumns($table) as $column) {
+            $columns[] = (object) [
+                'Field' => $column['name'],
+                'Type' => $column['type'],
+                'Null' => $column['nullable'] ? 'YES' : 'NO',
+                'Key' => in_array($column['name'], $primary, true) ? 'PRI' : (in_array($column['name'], $unique, true) ? 'UNI' : ''),
+                'Default' => $column['default'],
+                'Extra' => $column['auto_increment'] ? 'auto_increment' : '',
+                'Comment' => $column['comment'] ?? '',
+            ];
+        }
+
+        return $columns;
     }
 
     public function controller_index($model)

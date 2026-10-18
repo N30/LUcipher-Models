@@ -5,6 +5,7 @@ namespace All1\LuModels\Providers;
 // use Illuminate\Support\ServiceProvider;
 
 use All1\LuUnite\Providers\LuUniteServiceProvider;
+use Illuminate\Support\Facades\Blade;
 
 // use ReflectionClass;
 // use ReflectionException;
@@ -47,6 +48,11 @@ class LuModelsServiceProvider extends LuUniteServiceProvider
             'register_views' => true,
             'register_blade_components' => true,
         ]);
+
+        // unite registers the class components under the alias "models"; every shipped blade writes
+        // <x-lu_models::…>, so without this alias Blade fell back to anonymous components and the index
+        // table never saw its $db_columns. Phase 2 moves all registration into this provider.
+        Blade::componentNamespace('All1\\LuModels\\View\\Components', 'lu_models');
 
         $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php'); // or api.php
 

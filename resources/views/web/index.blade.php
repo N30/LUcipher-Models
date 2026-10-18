@@ -20,7 +20,7 @@
 
     <flux:separator class="mt-4 mb-6" />
  
-    <x-lu_models::index-filters :type="$controller_type" :data="$data" :routePrefix="$route_prefix" :filters="$filters" />
+    <x-lu_models::index-filters :type="$controller_type" :data="$data" :model="$model" :routePrefix="$route_prefix" :filters="$filters" />
 
     <flux:separator class="my-4" />
  

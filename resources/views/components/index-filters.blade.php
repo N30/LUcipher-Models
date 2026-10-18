@@ -7,7 +7,7 @@
 
     <div class="grid auto-rows-min gap-4 md:grid-cols-4">
         <div class="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-            <x-lu_models::filter-relationships :model="$data[0]" :type="$type" :filters="$filters" />
+            <x-lu_models::filter-relationships :model="$model" :type="$type" :filters="$filters" />
         </div>
         <div class="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
            
@@ -16,7 +16,7 @@
            
         </div>
         <div class="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-            <x-lu_models::filter-search :model="$data[0]" :livewire=false :filters="$filters" />
+            <x-lu_models::filter-search :model="$model" :livewire=false :filters="$filters" />
         </div>
     </div>
 
