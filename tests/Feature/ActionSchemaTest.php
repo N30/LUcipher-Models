@@ -55,6 +55,11 @@ class ActionSchemaTest extends TestCase
         $this->assertSame(200, $schema['properties']['per_page']['maximum']);
         $this->assertSame(['id', 'user_id', 'title', 'created_at', 'updated_at'], $schema['properties']['search_fields']['items']['enum'], 'body and secret_token are not searchable on the index');
         $this->assertSame(['user'], $schema['properties']['with']['items']['enum']);
+        $this->assertSame(['user'], $schema['properties']['include']['items']['enum']);
+        $this->assertSame(['id', 'user_id', 'title', 'created_at', 'updated_at'], array_keys($schema['properties']['filter']['properties']), 'only readable fields are filterable');
+        $this->assertSame('integer', $schema['properties']['filter']['properties']['id']['anyOf'][0]['type']);
+        $this->assertContains('-created_at', $schema['properties']['sort']['items']['enum']);
+        $this->assertSame(['id', 'user_id', 'title', 'created_at', 'updated_at'], $schema['properties']['fields']['items']['enum']);
     }
 
     public function test_supports_follows_exposure(): void

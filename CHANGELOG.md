@@ -38,6 +38,12 @@
   existing `search`, `search_fields`, `page`, `per_page`, `limit` and `order`. Every name is checked
   against what the action may read: an unknown, hidden or unreadable field, operator or relationship is a
   400 naming it, never a silent probe.
+- **OpenAPI 3.1.** `GET /api/openapi.json` (`lu::api.openapi`, behind the API's auth unless
+  `lu::models.openapi.public`) and `php artisan lu:openapi [path]` describe every model exposed on `api`:
+  paths per REST-shaped route, the listing's parameters from `Index::schema()`, request bodies from
+  `Create::schema()`/`Update::schema()`, response schemas from the fields each action may read, `Error`,
+  `ValidationError`, `PageMeta`, `PageLinks`, `DryRun`, and the Sanctum bearer scheme. `Index::schema()`
+  itself now describes `filter`, `sort`, `fields` and `include`.
 - **Dry run.** A write to the API with `dry_run=1` is authorized and validated, answers
   `{would: true, message: "Would create Post", data}` and writes nothing: no row, no event, no audit
   entry. `Result::would()`, `Action::dryRun()` and `Action::would()` carry it; browser transports ignore it.

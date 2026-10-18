@@ -80,6 +80,12 @@ final class ResourceRoutes
         $router->delete($member, $controller)->where('id', $notAnAction)->defaults('action', 'destroy')->middleware($writeMiddleware)->name($name.'.destroy');
     }
 
+    /** The URI prefix of the api transport: `api`, or `api/{lu::models.api_prefix}`. */
+    public static function apiPrefix(): string
+    {
+        return trim('api/'.trim((string) config('lu::models.api_prefix'), '/'), '/');
+    }
+
     /** Whether $method may reach $action. Unknown actions are never allowed. */
     public static function allows(string $method, ?string $action): bool
     {

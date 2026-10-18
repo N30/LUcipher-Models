@@ -2,6 +2,7 @@
 
 use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Http\Controllers\Api\ApiRestController;
+use All1\LuModels\Http\Controllers\Api\OpenApiController;
 use All1\LuModels\Http\Controllers\ResourceController;
 use All1\LuModels\Livewire\Master;
 use All1\LuModels\Providers\LuModelsServiceProvider;
@@ -27,11 +28,22 @@ if (config('lu::models.enable_rest_routes')) {
 if (config('lu::models.enable_api_routes')) {
     // /api[/{api_prefix}]: the REST-shaped routes (GET|POST /{model}, GET|PUT|PATCH|DELETE /{model}/{id})
     // are the documented API; the action-shaped /{model}/{action}/{id?} routes stay one release, deprecated.
-    $apiPrefix = trim('api/'.trim((string) config('lu::models.api_prefix'), '/'), '/');
-    $registerApi = function (): void {
+    // /openapi.json is registered first so no {model} route can shadow it.
+    $apiPrefix = ResourceRoutes::apiPrefix();
+    $openapiPublic = (bool) config('lu::models.openapi.public');
+    $registerOpenApi = function (): void {
+        Route::get('openapi.json', OpenApiController::class)->name('lu::api.openapi');
+    };
+    $registerApi = function () use ($openapiPublic, $registerOpenApi): void {
+        if (! $openapiPublic) {
+            $registerOpenApi();
+        }
         ResourceRoutes::register('', ApiResourceController::class, 'lu::api.resources', false, writeMiddleware: ['throttle:lu-models-writes']);
         ResourceRoutes::registerRest('', ApiResourceController::class, 'lu::api', writeMiddleware: ['throttle:lu-models-writes']);
     };
+    if ($openapiPublic) {
+        Route::prefix($apiPrefix)->middleware(['api', 'throttle:lu-models-api'])->group($registerOpenApi);
+    }
     if (array_key_exists('auth:sanctum', App::make(Router::class)->getMiddleware())) {
         Route::prefix($apiPrefix)->middleware(['api', 'auth:sanctum', 'throttle:lu-models-api'])->group($registerApi);
     } else {

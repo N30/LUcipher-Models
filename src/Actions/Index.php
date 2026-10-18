@@ -18,7 +18,27 @@ class Index extends Action
 
     protected function inputSchema(Descriptor $descriptor): array
     {
-        $readable = array_keys($descriptor->fieldsFor('index'));
+        $fields = $descriptor->fieldsFor('index');
+        $readable = array_keys($fields);
+        $relationships = array_keys($descriptor->relationships);
+        $filters = [];
+        foreach ($fields as $name => $field) {
+            $value = Descriptor::jsonSchemaFor($field);
+            unset($value['description']);
+            $filters[$name] = ['anyOf' => [
+                $value,
+                [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'properties' => [
+                        'eq' => $value, 'ne' => $value, 'lt' => $value, 'lte' => $value, 'gt' => $value, 'gte' => $value,
+                        'like' => ['type' => 'string', 'description' => 'Contains'],
+                        'in' => ['type' => ['string', 'array'], 'items' => $value, 'description' => 'Comma-separated or an array'],
+                        'null' => ['type' => 'boolean'],
+                    ],
+                ],
+            ]];
+        }
 
         return [
             'type' => 'object',
@@ -26,10 +46,14 @@ class Index extends Action
                 'page' => ['type' => 'integer', 'minimum' => 1],
                 'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 200],
                 'limit' => ['type' => 'integer', 'minimum' => 1, 'description' => 'A flat list of at most this many rows instead of a page'],
-                'order' => ['type' => 'string', 'enum' => ['asc', 'desc']],
+                'filter' => ['type' => 'object', 'additionalProperties' => false, 'properties' => $filters, 'description' => 'filter[field]=value, or filter[field][op]=value with op one of eq, ne, lt, lte, gt, gte, like, in, null'],
+                'sort' => ['type' => ['string', 'array'], 'items' => ['type' => 'string', 'enum' => [...$readable, ...array_map(fn ($f) => '-'.$f, $readable)]], 'description' => 'Field names, comma-separated or an array; a leading - sorts descending'],
+                'order' => ['type' => 'string', 'enum' => ['asc', 'desc'], 'description' => 'Direction of the default sort when sort is not given'],
                 'search' => ['type' => 'string'],
                 'search_fields' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => $readable]],
-                'with' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => array_keys($descriptor->relationships)]],
+                'fields' => ['type' => ['string', 'array'], 'items' => ['type' => 'string', 'enum' => $readable], 'description' => 'Sparse fields: only these attributes (the key always)'],
+                'include' => ['type' => ['string', 'array'], 'items' => ['type' => 'string', 'enum' => $relationships], 'description' => 'Relationships to include'],
+                'with' => ['type' => ['string', 'array'], 'items' => ['type' => 'string', 'enum' => $relationships], 'description' => 'Alias of include'],
             ],
             'additionalProperties' => false,
         ];

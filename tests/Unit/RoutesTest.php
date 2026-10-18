@@ -20,9 +20,10 @@ class RoutesTest extends UnitTestCase
 {
     private Router $router;
 
-    private function loadRoutes(bool $sanctum = true, bool $allowUnauthenticatedApi = false): void
+    private function loadRoutes(bool $sanctum = true, bool $allowUnauthenticatedApi = false, bool $openapiPublic = false): void
     {
         $app = $this->bootContainer(['lu::models' => [
+            'openapi' => ['public' => $openapiPublic],
             'enable_web_routes' => true,
             'enable_rest_routes' => true,
             'enable_api_routes' => true,
@@ -165,6 +166,21 @@ class RoutesTest extends UnitTestCase
         foreach (['lu::api.resources', 'lu::api.resources.store', 'lu::api.resources.update', 'lu::api.resources.destroy'] as $name) {
             $this->assertContains('auth:sanctum', $this->router->getRoutes()->getByName($name)->middleware(), $name);
         }
+    }
+
+    public function test_the_openapi_document_sits_behind_the_api_auth_unless_made_public(): void
+    {
+        $this->loadRoutes();
+        $route = $this->match('GET', '/api/openapi.json');
+        $this->assertSame('lu::api.openapi', $route->getName(), 'registered before the {model} routes, so none shadows it');
+        $this->assertContains('auth:sanctum', $route->middleware());
+
+        $this->loadRoutes(openapiPublic: true);
+        $route = $this->match('GET', '/api/openapi.json');
+        $this->assertSame('lu::api.openapi', $route->getName());
+        $this->assertNotContains('auth:sanctum', $route->middleware());
+        $this->assertContains('throttle:lu-models-api', $route->middleware());
+        $this->assertContains('auth:sanctum', $this->router->getRoutes()->getByName('lu::api.index')->middleware(), 'the resources stay behind auth');
     }
 
     public function test_the_controller_guard_allows_only_the_matching_method(): void

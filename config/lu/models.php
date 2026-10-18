@@ -3,6 +3,13 @@
 return [
     'layout' => 'components.layouts.app',
     'api_prefix' => '', // like v1 it goes right after /api
+    // GET /api/openapi.json describes the exposed models (OpenAPI 3.1). It sits behind the API's own
+    // auth unless public; title defaults to "{app.name} API".
+    'openapi' => [
+        'public' => false,
+        'title' => null,
+        'version' => '1.0.0',
+    ],
     'lang_prefix' => '', // language file prefixx (folder) like 'lu.'
     'web_middleware' => ['web', 'auth'],
     // 'api_middleware'=> [this one is mandatory for security reasons, some models may need access publicly but API never without a token]
