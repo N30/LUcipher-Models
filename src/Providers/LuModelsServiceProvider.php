@@ -49,6 +49,11 @@ class LuModelsServiceProvider extends ServiceProvider
 
         Blade::componentNamespace('All1\\LuModels\\View\\Components', 'lu_models');
 
+        $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
+        $this->publishesMigrations([
+            __DIR__.'/../../database/migrations' => database_path('migrations'),
+        ], 'lu-models-migrations');
+
         $this->registerRateLimiters();
 
         $this->loadRoutesFrom(__DIR__.'/../../routes/lu_models-routes.php');

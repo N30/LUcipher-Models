@@ -38,6 +38,16 @@ return [
         'writes' => 20,
     ],
 
+    // Every create, update and delete that goes through the package is recorded in lu_models_audit:
+    // model, key, action, transport, user, IP and the changed attributes (never $hidden ones).
+    // store_values=false keeps only the attribute names. Run `php artisan migrate` after installing;
+    // a missing table logs a warning and never blocks the write.
+    'audit' => [
+        'enabled' => true,
+        'store_values' => true,
+        'table' => 'lu_models_audit',
+    ],
+
     // If you avorride action clasess you might need to implement these in your own or use your own logic
     // Also individual model [not-built yet] settings will override these!
     // Also policies will override these!!! [about to build now]

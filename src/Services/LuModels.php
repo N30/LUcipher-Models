@@ -2,6 +2,7 @@
 
 namespace All1\LuModels\Services;
 
+use All1\LuModels\Audit\AuditLogger;
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\Exposure;
 use All1\LuModels\Support\FieldVisibility;
@@ -611,6 +612,9 @@ class LuModels
         }
         $verb = new $action($service, $model, $data, $controller_type);
 
+        // what the record looked like before the write, for the audit log
+        $before = $model instanceof Model && $model->exists ? $model->getRawOriginal() : [];
+
         $service = $verb->handle();
 
         // v3.0.1: fire the action's own name. 3.0.0 fired {model}.updated for every action
@@ -620,6 +624,10 @@ class LuModels
         if ($event_name !== null) {
             $payload_model = (is_object($service) && isset($service->model) && $service->model instanceof Model) ? $service->model : $model;
             event($event_name, ['model' => $payload_model, 'data' => $data, 'controller_type' => $controller_type]); // <-- THIS IS THE EVENT YOU WANT TO LISTEN FOR IF USING LARAVEL BUILT-IN EVENTS
+
+            if ($payload_model instanceof Model) {
+                AuditLogger::record(Str::afterLast($event_name, '.'), $payload_model, $before, $controller_type);
+            }
         }
 
         return $service;
