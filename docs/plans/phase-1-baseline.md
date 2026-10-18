@@ -81,10 +81,17 @@ repository before `fix/3.0.1-security` exists. What it found, beyond the study:
 1. **Livewire is a third undeclared dependency.** Registering the `/spa` route autoloads
    `Livewire\Master`, which extends `Livewire\Component`; without Livewire the provider cannot
    boot at all (`Class "Livewire\Component" not found` at `routes/lu_models-routes.php:48`).
-2. **The blades are written against Flux Pro.** 22 `<flux:*>` tags, among them `flux:table`
-   (+ `.columns/.column/.row/.cell`) and `flux:date-picker`, which are Pro-only. The package cannot
-   require a paid, private-repository UI kit; phase 5 ships a plain Blade/Tailwind default theme and
-   keeps Flux as an optional theme. 🔴 question for Neo below.
+2. **The blades are written against Flux, and one tag is Pro-only.** 22 `<flux:*>` tags. Checked
+   against the free `livewire/flux` package: `table` (+ `.columns/.column/.row/.cell`), `select`,
+   `navlist`, `menu`, `dropdown`, `badge`, `separator`, `heading`, `icon`, `textarea`, `input`,
+   `button` are free; **`flux:date-picker` (4 uses, in `web/create`, `web/edit`, `rest/create`,
+   `rest/edit`) is Pro-only**. Flux is not declared either. Phase 5 ships a plain Blade/Tailwind
+   default theme and keeps Flux as an optional theme; until then the harness installs free Flux as
+   a dev dependency so the index page can render, and the create/edit blades stay untested.
+2b. **No default layout ships.** `config/lu/models.php` sets `layout => 'components.layouts.app'`,
+   a host-app view (the Livewire starter-kit convention). `DynamicLayout` `@extends` it, so a fresh
+   install renders nothing until the app provides that view. Phase 5 adds `lu_models::layouts.app`
+   as the fallback; the harness injects a fixture layout.
 3. **unite's provider helper assumes the n30 directory layout.** `lu_addon_provider_register/boot`
    build the config and view paths as `__DIR__.'/../../../lu_models/…'` from *inside the unite
    package*, so this package only boots when its checkout is literally named `lu_models` and sits
@@ -114,6 +121,16 @@ repository before `fix/3.0.1-security` exists. What it found, beyond the study:
 Dev dependencies the harness needed to boot the shipped code as-is: `orchestra/testbench`,
 `livewire/livewire ^4`, `lorisleiva/laravel-actions ^2`, `hirethunk/verbs`. They are dev-only in
 phase 1; phases 2 and 4 decide what the package actually requires.
+
+## Phase 2 dry run (scratchpad, 2026-10-18)
+
+To de-risk phase 2 before it starts: in the scratch copy the provider was rewritten to extend
+`Illuminate\Support\ServiceProvider`, register config (`mergeConfigFrom` + the published
+`config/lu/models.php` folded over it), views, the component namespace **as `lu_models`**, the
+`LuModels` singleton and the routes from its own `__DIR__`; `lucipher/unite` was removed from
+`require` (moved to `suggest`) and from `vendor/`. The suite boots and reports the same 7 live-bug
+failures — nothing in the package needs unite at runtime. Phase 2 is one provider file plus
+`composer.json`, and the integration point for unite apps is the open question below.
 
 ## Baseline tooling
 
