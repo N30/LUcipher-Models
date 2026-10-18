@@ -9,6 +9,11 @@ class Post extends LuModel
 {
     protected $fillable = ['user_id', 'title', 'body'];
 
+    protected $hidden = ['secret_token'];
+
+    /** body is shown on the detail page and the forms, never in the index listing. */
+    public $lu_fields = ['body' => ['show', 'create', 'edit']];
+
     public $index_columns = ['id', 'title', 'created_at'];
 
     public $store_validation_rules = ['title' => 'required|string|max:120'];

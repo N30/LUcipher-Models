@@ -101,13 +101,22 @@ class ControllerWriteTest extends UnitTestCase
 
     public function test_web_update_writes_the_row_and_redirects_to_show(): void
     {
-        $response = $this->dispatch('PUT', '/web/widgets/update/1', ['name' => 'New', 'is_admin' => 1]);
+        $response = $this->dispatch('PUT', '/web/widgets/update/1', ['name' => 'New']);
 
         $this->assertInstanceOf(RedirectResponse::class, $response);
         $this->assertSame('http://localhost/web/widgets/show/1', $response->getTargetUrl());
         $this->assertSame(['Record updated'], $this->session->get('messages'));
+        $this->assertSame('New', Widget::find(1)->name);
+    }
+
+    public function test_web_update_with_a_guarded_key_redirects_back_with_the_error_and_writes_nothing(): void
+    {
+        $response = $this->dispatch('PUT', '/web/widgets/update/1', ['name' => 'New', 'is_admin' => 1]);
+
+        $this->assertInstanceOf(RedirectResponse::class, $response);
+        $this->assertTrue($this->session->get('errors')->has('is_admin'));
         $row = Widget::find(1);
-        $this->assertSame('New', $row->name);
+        $this->assertSame('Old', $row->name);
         $this->assertSame(0, (int) $row->is_admin, 'is_admin is not fillable and must not be written');
     }
 
@@ -139,25 +148,34 @@ class ControllerWriteTest extends UnitTestCase
         $this->assertSame('Old', Widget::find(1)->name);
     }
 
+    public function test_api_update_rejects_a_guarded_key_with_422(): void
+    {
+        $response = $this->dispatch('PUT', '/api/widgets/update/1', ['name' => 'Api', 'is_admin' => 1]);
+
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertArrayHasKey('is_admin', $response->getData(true)['errors']);
+        $this->assertSame('Old', Widget::find(1)->name, 'a rejected write changes nothing');
+    }
+
     public function test_api_update_returns_the_model_in_data_as_in_3_0_0(): void
     {
-        $result = $this->dispatch('PUT', '/api/widgets/update/1', ['name' => 'Api', 'is_admin' => 1]);
+        $response = $this->dispatch('PUT', '/api/widgets/update/1', ['name' => 'Api']);
 
+        $this->assertSame(200, $response->getStatusCode());
+        $result = $response->getData(true);
         $this->assertSame('Record updated', $result['message']);
-        $this->assertInstanceOf(Widget::class, $result['data']);
-        $this->assertSame(1, $result['data']->id);
-        $this->assertSame('Api', $result['data']->name);
-        $this->assertSame(0, (int) Widget::find(1)->is_admin);
+        $this->assertSame(1, $result['data']['id']);
+        $this->assertSame('Api', $result['data']['name']);
     }
 
     public function test_api_destroy_returns_the_deleted_model_in_data(): void
     {
-        $result = $this->dispatch('DELETE', '/api/widgets/destroy/1');
+        $response = $this->dispatch('DELETE', '/api/widgets/destroy/1');
 
+        $this->assertSame(200, $response->getStatusCode());
+        $result = $response->getData(true);
         $this->assertSame('Record deleted', $result['message']);
-        $this->assertInstanceOf(Widget::class, $result['data']);
-        $this->assertSame(1, $result['data']->id);
-        $this->assertFalse($result['data']->exists);
+        $this->assertSame(1, $result['data']['id']);
         $this->assertNull(Widget::find(1));
     }
 

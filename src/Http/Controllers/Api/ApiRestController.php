@@ -15,8 +15,11 @@ class ApiRestController extends ApiResourceController
         if ($method == 'GET' || $method == 'HEAD') {
             return $this->chooseView($this->{$this->action}($id));
         } else {
-            $result = parent::__invoke($request, $model, $action, $id);
+            $result = $this->runAction($request, $id);
             // redirect back and flash message
+            if (isset($result['errors'])) {
+                return redirect()->back()->withErrors($result['errors'])->withInput();
+            }
             if (isset($result['message'])) {
                 session()->flash('flash.banner', $result['message']);
 

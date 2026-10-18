@@ -56,18 +56,27 @@ class WebTransportTest extends TestCase
         $this->assertDatabaseMissing('posts', ['id' => $post->id]);
     }
 
-    public function test_update_respects_fillable(): void
+    public function test_update_rejects_a_guarded_key_and_writes_nothing(): void
     {
         $post = Post::create(['user_id' => $this->user->id, 'title' => 'Old']);
 
         $this->actingAs($this->user)->put($this->url('update', $post->id), [
             'title' => 'New',
             'secret_token' => 'injected',
-        ]);
+        ])->assertRedirect()->assertSessionHasErrors('secret_token');
 
         $post->refresh();
-        $this->assertSame('New', $post->title);
+        $this->assertSame('Old', $post->title, 'a write naming a guarded key is rejected whole');
         $this->assertNull($post->secret_token, 'secret_token is not fillable and must not be mass-assigned');
+    }
+
+    public function test_update_with_fillable_keys_only_writes_and_redirects(): void
+    {
+        $post = Post::create(['user_id' => $this->user->id, 'title' => 'Old']);
+
+        $this->actingAs($this->user)->put($this->url('update', $post->id), ['title' => 'New'])->assertRedirect();
+
+        $this->assertSame('New', $post->refresh()->title);
     }
 
     public function test_store_fires_the_created_event_not_updated(): void

@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
+use Illuminate\Translation\ArrayLoader;
+use Illuminate\Translation\Translator;
+use Illuminate\Validation\Factory;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 
 abstract class UnitTestCase extends BaseTestCase
@@ -43,6 +46,9 @@ abstract class UnitTestCase extends BaseTestCase
         $app->instance('events', $events);
         $app->instance('config', new Repository($config));
         $app->instance('request', $request ?? Request::create('/', 'GET'));
+        $translator = new Translator(new ArrayLoader, 'en');
+        $app->instance('translator', $translator);
+        $app->instance('validator', new Factory($translator, $app));
 
         Facade::clearResolvedInstances();
         Facade::setFacadeApplication($app);

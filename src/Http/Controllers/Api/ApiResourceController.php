@@ -4,10 +4,13 @@ namespace All1\LuModels\Http\Controllers\Api;
 
 use All1\LuModels\Routing\ResourceRoutes;
 use All1\LuModels\Services\LuModels;
+use All1\LuModels\Support\FieldVisibility;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Str;
-use Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 // use \All1\LuModels\Services\LuModels;
 
@@ -64,17 +67,59 @@ class ApiResourceController
      */
     public function __invoke(Request $request, $model = null, $action = null, $id = null)
     {
-        /*switch($this->aciton) {
-            case 'list':
-                return $this->index();
-                break;
-        }*/
-        // dd("TEST");
-        // get this route name
+        return $this->toResponse($this->runAction($request, $id));
+    }
 
+    /** Guard the HTTP method, run the action and hand back its raw result: the data for reads, an array for writes. */
+    protected function runAction(Request $request, $id)
+    {
         $this->guardMethod($request);
 
         return $this->{$this->action}($id);
+    }
+
+    /**
+     * The API transport's answer. A validation failure (including a guarded key in the payload) is
+     * 422 with the errors by field, a missing record 404, everything else JSON with status 200.
+     */
+    protected function toResponse($result)
+    {
+        if ($result instanceof Response) {
+            return $result;
+        }
+
+        if (is_array($result) && isset($result['errors'])) {
+            $errors = $result['errors'] instanceof \Illuminate\Contracts\Validation\Validator
+                ? $result['errors']->errors()->toArray()
+                : (array) $result['errors'];
+
+            return new JsonResponse(['message' => $result['message'] ?? 'The given data was invalid.', 'errors' => $errors], 422);
+        }
+
+        $status = 200;
+        if (is_array($result) && isset($result['status'])) {
+            $status = (int) $result['status'];
+            unset($result['status']);
+        }
+
+        return new JsonResponse($result, $status);
+    }
+
+    /**
+     * The validator for a write: the model's rules for the action plus a rejection of every client
+     * key the model does not allow written (not fillable, guarded, or kept from this action by
+     * $lu_fields). Rejecting beats silently dropping: the caller learns the contract.
+     */
+    protected function validatorFor(array $data, string $action, array $client_keys): \Illuminate\Contracts\Validation\Validator
+    {
+        $rules = $this->model->{$action === 'create' ? 'store_validation_rules' : 'update_validation_rules'} ?? [];
+        $rejected = FieldVisibility::for($this->model)->rejectedWrites($client_keys, $action);
+
+        return Validator::make($data, $rules)->after(function ($validator) use ($rejected) {
+            foreach ($rejected as $key) {
+                $validator->errors()->add($key, 'The '.$key.' field cannot be written.');
+            }
+        });
     }
 
     /**
@@ -193,6 +238,7 @@ class ApiResourceController
         if (! isset($data)) {
             $data = request()->except(['_token', '_method']);
         }
+        $client_keys = array_keys($data);
 
         foreach ($this->columns as $k => $v) {
             if ($v['Key'] == 'PRI' && $v['Extra'] == 'auto_increment') {
@@ -228,10 +274,10 @@ class ApiResourceController
             $data = array_merge($data, ['slug' => $slug]);
         }
 
-        $validator = Validator::make($data, $this->model->store_validation_rules);
+        $validator = $this->validatorFor($data, 'create', $client_keys);
 
         if ($validator->fails()) {
-            return ['errors' => $validator, 'message' => 'There waas an issue with your input']; // )->withInput();
+            return ['errors' => $validator, 'message' => 'There was an issue with your input.'];
         }
 
         // dd($validated);
@@ -242,9 +288,9 @@ class ApiResourceController
         } else {
             $data = LuModels::fromData('create', $this->service, $model_copy_since_method_exist_is_mutating_it, $data, $this->controller_type);
         }
-        // get last inserted column by
-        // encrypt the id
-        $id = encrypt($data->model->id);
+        // the encrypted key of the record the write produced (an app override may return the model itself)
+        $record = self::recordOf($data);
+        $id = $record ? encrypt($record->getKey()) : null;
 
         return ['message' => 'We have received and saved your information successfully.', 'data' => $data, 'id' => $id];
     }
@@ -257,7 +303,12 @@ class ApiResourceController
 
         $obj = $this->model->find($id);
         if (! $obj) {
-            return ['message' => 'Record not found', 'data' => []];
+            return ['message' => 'Record not found', 'data' => [], 'status' => 404];
+        }
+
+        $validator = $this->validatorFor($data, 'update', array_keys($data));
+        if ($validator->fails()) {
+            return ['errors' => $validator, 'message' => 'There was an issue with your input.'];
         }
 
         if (method_exists($obj, 'updateFromData')) {
@@ -277,7 +328,7 @@ class ApiResourceController
         // if yes delete
         $obj = $this->model->find($id);
         if (! $obj) {
-            return ['message' => 'Record not found', 'data' => []];
+            return ['message' => 'Record not found', 'data' => [], 'status' => 404];
         }
         // check if auth user owns the record
         // if not abort

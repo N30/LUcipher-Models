@@ -4,6 +4,7 @@ namespace All1\LuModels\Services;
 
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\Exposure;
+use All1\LuModels\Support\FieldVisibility;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -267,8 +268,10 @@ class LuModels
 
         // v3.0.1: an empty table used to 500 here ($data[0] on an empty result).
         $first = $data->first();
+        $visibility = FieldVisibility::for($this->model);
+        $read_action = $this->controller_data['action'] ?? 'index';
         if ($first === null) {
-            $this->db_columns = $this->model->getConnection()->getSchemaBuilder()->getColumnListing($this->model->getTable());
+            $this->db_columns = $visibility->readable($this->model->getConnection()->getSchemaBuilder()->getColumnListing($this->model->getTable()), $read_action);
             $this->filters = [
                 'with' => $with,
                 'sort' => $sort,
@@ -283,14 +286,11 @@ class LuModels
             return $data;
         }
 
-        $db_columns = array_keys($first->getAttributes());
+        $db_columns = $visibility->readable(array_keys($first->getAttributes()), $read_action);
 
+        // $hidden, hidden_columns and anything $lu_fields keeps from this action never read out
         foreach ($data as $d) {
-            if (isset($this->model->hidden_columns)) {
-                foreach ($this->model->hidden_columns as $c) {
-                    unset($d->{$c});
-                }
-            }
+            $d->makeHidden($visibility->hiddenFor($d, $read_action));
         }
 
         foreach ($first->getRelations() as $k => $rel) {
@@ -427,14 +427,12 @@ class LuModels
         // return as data
         $data = $q->where('id', $this->model->id)->get();
 
-        $db_columns = array_keys($data[0]->getAttributes());
+        $visibility = FieldVisibility::for($this->model);
+        $read_action = FieldVisibility::normalizeAction($this->controller_data['action'] ?? 'show');
+        $db_columns = $visibility->readable(array_keys($data[0]->getAttributes()), $read_action);
 
         foreach ($data as $d) {
-            if (isset($this->model->hidden_columns)) {
-                foreach ($this->model->hidden_columns as $c) {
-                    unset($d->{$c});
-                }
-            }
+            $d->makeHidden($visibility->hiddenFor($d, $read_action));
         }
 
         foreach ($data[0]->getRelations() as $k => $rel) {

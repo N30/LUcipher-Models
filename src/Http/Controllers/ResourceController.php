@@ -4,6 +4,7 @@ namespace All1\LuModels\Http\Controllers;
 
 use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Models\LuModel;
+use All1\LuModels\Support\FieldVisibility;
 use Illuminate\Http\Request;
 use Str;
 
@@ -18,7 +19,7 @@ class ResourceController extends ApiResourceController
             return $this->chooseView($this->{$this->action}($id));
         } else {
 
-            $result = parent::__invoke($request, $model, $action, $id);
+            $result = $this->runAction($request, $id);
             // echo "Asda"; return false;
 
             // redirect back and flash message
@@ -111,9 +112,13 @@ class ResourceController extends ApiResourceController
             $view = view(LuModel::viewFileFor($this->model, $this->action), ['data' => $data]);
         }
 
+        $columns = in_array($this->action, ['create', 'edit'], true)
+            ? FieldVisibility::for($this->model)->filterColumns($this->columns, $this->action)
+            : $this->columns;
+
         return $view
             ->with('model', $this->model)
-            ->with('columns', $this->columns)
+            ->with('columns', $columns)
             ->with('filters', $this->filters)
             ->with('route_prefix', $this->route_prefix)
             ->with('meta', $this->meta)
