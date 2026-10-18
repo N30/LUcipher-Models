@@ -5,7 +5,7 @@
 ### Added
 - Testbench-based feature suite with a fixture app beside the class-level unit suite; `composer test`,
   `composer coverage`, `composer lint`, `composer analyse` scripts.
-- GitHub Actions CI: preflight, Pint, a PHP 8.2–8.4 × Laravel 11/12 matrix with pcov coverage and a
+- GitHub Actions CI: preflight, Pint, a PHP 8.2–8.4 × Laravel 12 matrix with pcov coverage and a
   coverage floor, Larastan at level 5 with no baseline (the analysis boots the package provider through
   `testbench.yaml` and covers the fixture app, so the view namespace and the ownership trait resolve).
 - **One class per operation.** `Actions\Index`, `Read`, `Create`, `Update`, `Delete` extend `Actions\Action`:
@@ -71,6 +71,9 @@
   directory, so the package installs from Packagist or any VCS repository and no longer depends on the
   name of its parent folder. A published `config/lu/models.php` is still honoured. The package sets no
   environment variable. Publish tags: `lu-models-config`, `lu-models-views`.
+- **Requires Laravel 12** (`illuminate/* ^12`). Laravel 11 reached end of life in March 2026 and
+  `laravel/mcp`, which the MCP transport builds on, needs `illuminate/json-schema` (12.41+). `laravel/mcp`
+  is `suggest`ed and installed for development.
 - `lorisleiva/laravel-actions` is no longer required: the operations are plain classes. `livewire/livewire`
   (needed only by the `/spa` transport) and `livewire/flux` (used by the shipped blades) are
   `suggest`ed; turning `enable_spa_routes` on without Livewire fails with a clear message.
