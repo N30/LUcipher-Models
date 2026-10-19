@@ -69,7 +69,8 @@ class FormTest extends TestCase
         $post = Post::create(['user_id' => $this->user->id, 'title' => 'Mine']);
         $other = User::create(['name' => 'Other', 'email' => 'other@example.test']);
 
-        Livewire::actingAs($other)->test(Form::class, ['model' => 'posts', 'id' => $post->id])->set('form.title', 'Taken')->call('save')->assertForbidden();
+        // refused on mount, through the read operation, before the record ever reaches the form
+        Livewire::actingAs($other)->test(Form::class, ['model' => 'posts', 'id' => $post->id])->assertForbidden();
         $this->assertSame('Mine', $post->fresh()->title);
     }
 }

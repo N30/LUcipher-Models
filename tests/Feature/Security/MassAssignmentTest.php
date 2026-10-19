@@ -2,6 +2,10 @@
 
 namespace All1\LuModels\Tests\Feature\Security;
 
+use All1\LuModels\Mcp\LuModelsServer;
+use All1\LuModels\Mcp\Tools\CreateTool;
+use All1\LuModels\Mcp\Tools\UpdateTool;
+use All1\LuModels\Support\Descriptor;
 use All1\LuModels\Tests\TestCase;
 use App\Models\Post;
 use App\Models\User;
@@ -64,6 +68,31 @@ class MassAssignmentTest extends TestCase
         $this->actingAs($this->user)
             ->putJson($this->url('api', 'update', 999), ['title' => 'New'])
             ->assertNotFound();
+    }
+
+    public function test_the_rest_shaped_routes_refuse_a_guarded_key_too(): void
+    {
+        $this->actingAs($this->user)->postJson('/api/posts', ['title' => 'Fresh', 'secret_token' => 'x'])->assertStatus(422)->assertJsonValidationErrors(['secret_token']);
+        $this->actingAs($this->user)->patchJson('/api/posts/'.$this->post->id, ['title' => 'New', 'secret_token' => 'x'])->assertStatus(422)->assertJsonValidationErrors(['secret_token']);
+        $this->actingAs($this->user)->patchJson('/api/posts/'.$this->post->id, ['title' => 'New', 'secret_token' => 'x', 'dry_run' => 1])->assertStatus(422);
+
+        $this->assertDatabaseCount('posts', 1);
+        $this->assertSame('Old', $this->post->refresh()->title);
+        $this->assertNull($this->post->secret_token);
+    }
+
+    public function test_the_mcp_tools_refuse_a_guarded_key_too(): void
+    {
+        $descriptor = Descriptor::for(Post::class);
+        $as = LuModelsServer::actingAs($this->user);
+
+        $as->tool(new CreateTool($descriptor), ['title' => 'Fresh', 'secret_token' => 'x'])->assertHasErrors(['422', 'secret_token']);
+        $as->tool(new UpdateTool($descriptor), ['id' => $this->post->id, 'title' => 'New', 'secret_token' => 'x'])->assertHasErrors(['422', 'secret_token']);
+        $as->tool(new UpdateTool($descriptor), ['id' => $this->post->id, 'title' => 'New', 'secret_token' => 'x', 'dry_run' => true])->assertHasErrors(['422']);
+
+        $this->assertDatabaseCount('posts', 1);
+        $this->assertSame('Old', $this->post->refresh()->title);
+        $this->assertNull($this->post->secret_token);
     }
 
     public function test_rest_update_with_a_guarded_key_redirects_back_with_the_error(): void

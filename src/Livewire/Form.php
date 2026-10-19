@@ -3,6 +3,7 @@
 namespace All1\LuModels\Livewire;
 
 use All1\LuModels\Livewire\Concerns\InteractsWithResource;
+use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Form as FormFields;
 use All1\LuModels\Support\Keys;
 use All1\LuModels\Support\Writer;
@@ -29,7 +30,9 @@ class Form extends Component
     {
         $this->resolveResource($model);
 
-        $record = $id === null ? null : $this->record($id);
+        // edit authorizes on mount through the read operation, as the web controller's edit() does: a
+        // stranger must not see the record in the form, not only be refused on save
+        $record = $id === null ? null : LuModels::fromData('read', $this->service('edit'), $this->record($id), [], 'spa')->model;
         $this->key = $record?->getKey();
 
         foreach (FormFields::fields($record ?? $this->newModel(), $this->action()) as $field) {

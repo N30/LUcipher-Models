@@ -2,6 +2,7 @@
 
 namespace All1\LuModels\Tests\Feature\Security;
 
+use All1\LuModels\Mcp\LuModelsServer;
 use All1\LuModels\Support\Exposure;
 use All1\LuModels\Tests\TestCase;
 use App\Models\Note;
@@ -35,7 +36,13 @@ class ExposureTest extends TestCase
 
         $this->get(route('lu::web.resources', ['model' => 'posts', 'action' => 'index']))->assertOk();
         $this->getJson(route('lu::api.resources', ['model' => 'posts', 'action' => 'index']))->assertNotFound();
+        $this->getJson('/api/posts')->assertNotFound();
+        $this->get('/spa/posts')->assertNotFound();
         $this->assertSame(['web'], Exposure::transportsFor(Post::class));
+
+        $names = array_column((fn () => $this->items)->call(LuModelsServer::tools()), 'name');
+        $this->assertSame([], array_filter($names, fn ($name) => str_starts_with($name, 'posts_')), 'no MCP tool for a model not exposed on mcp');
+        $this->assertSame(['lu_models_models', 'lu_models_describe'], $names);
     }
 
     public function test_a_model_can_expose_itself_by_declaration(): void
