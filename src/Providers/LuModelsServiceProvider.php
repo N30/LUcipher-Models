@@ -2,6 +2,7 @@
 
 namespace All1\LuModels\Providers;
 
+use All1\LuModels\Console\InstallCommand;
 use All1\LuModels\Console\LuModelsCommand;
 use All1\LuModels\Console\OpenApiCommand;
 use All1\LuModels\Livewire\Form;
@@ -63,7 +64,7 @@ class LuModelsServiceProvider extends ServiceProvider
         $this->registerRateLimiters();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([LuModelsCommand::class, OpenApiCommand::class]);
+            $this->commands([InstallCommand::class, LuModelsCommand::class, OpenApiCommand::class]);
         }
 
         if (class_exists(Livewire::class)) {
