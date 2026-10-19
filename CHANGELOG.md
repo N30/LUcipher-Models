@@ -1,6 +1,10 @@
 # Changelog — lucipher/models
 
-## Unreleased
+## 4.0.0 — unreleased (tag pending the owner's go-ahead)
+
+**Major version. Breaking changes:** Laravel 12 only; the REST-shaped API and its envelope; plain keys for
+signed-in callers; `Livewire\Master`, the `*FromData` hooks and Flux Pro gone; `lorisleiva/laravel-actions`
+no longer required. `UPGRADE.md` walks every one. Phases 2–6 of the production plan (`docs/plans/`).
 
 ### Added
 - Testbench-based feature suite with a fixture app beside the class-level unit suite; `composer test`,
