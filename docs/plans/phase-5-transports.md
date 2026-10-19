@@ -1,6 +1,6 @@
 # Phase 5 — The transports
 
-**Status:** planned 2026-10-18 · **Depends on:** phase 4 · **Study:** §2.1–2.5, §2.7, §2.8, §5.13, §6.5, §7 Q6.
+**Status:** done 2026-10-19 (report: `phase-5-report.md`) · **Depends on:** phase 4 · **Study:** §2.1–2.5, §2.7, §2.8, §5.13, §6.5, §7 Q6.
 
 ## What
 
