@@ -6,7 +6,7 @@
 - Testbench-based feature suite with a fixture app beside the class-level unit suite; `composer test`,
   `composer coverage`, `composer lint`, `composer analyse` scripts.
 - GitHub Actions CI: preflight, Pint, a PHP 8.2–8.4 × Laravel 12 matrix with pcov coverage and a
-  coverage floor, Larastan at level 5 with no baseline (the analysis boots the package provider through
+  coverage floor, Larastan at level 6 with no baseline (the analysis boots the package provider through
   `testbench.yaml` and covers the fixture app, so the view namespace and the ownership trait resolve).
 - **One class per operation.** `Actions\Index`, `Read`, `Create`, `Update`, `Delete` extend `Actions\Action`:
   `handle()` authorizes then `execute()`s; `perform()` owns the state change and is the method an app
@@ -76,11 +76,21 @@
   (fail closed like the API), locally as `php artisan mcp:start lu-models` running as `mcp.local_user`.
   `mcp` is the fifth transport: exposure lists it, policies receive it, the audit row records it,
   `rate_limits.mcp` throttles it. Refusals (403, 404, 400, 422) come back as tool errors an agent can read.
+- **`php artisan lu:install`** publishes the config and the audit migration (and the blades with
+  `--views`), flips the switches it is given with `--transports=web,api`, and prints what remains.
+- **An examples app** under `workbench/` (`composer serve`): two models, two policies, a seeder, every
+  transport on; a smoke test keeps it running. `README.md` is rewritten; `UPGRADE.md` walks 2.x → 4.0.
 - **`schema()` and `supports()` on every operation.** `schema($model)` is a JSON Schema 2020-12 subset of
   what the operation accepts (writable fields minus what the package injects for create/update, the key
   for read/delete, the query parameters for index); `supports($model, $transport)` follows exposure.
 
 ### Fixed
+- Discovery works from any namespace: a model's route slug and view folder came from slicing the class
+  name after `App\Models`, so a model found under another `models_path` could not be routed. The name
+  relative to the models root comes from the file's path now, and the controllers resolve a slug through
+  discovery before guessing `App\Models`.
+- A dotted listing column for a relationship that was not loaded failed the whole page; it shows nothing.
+- `LuModel::displayText()` returns an iterable as JSON instead of an array the blade could not print.
 - The schema is read through Laravel's schema builder instead of MySQL's `SHOW FULL COLUMNS`, so the
   package works on SQLite and Postgres.
 - Class-based Blade components are registered under the `lu_models` alias the blades use; the index
@@ -135,6 +145,8 @@
 - The descriptor's `update` rules are the model's `update_validation_rules` only, as the validator applies
   them; the inspector and `schema()` no longer show store rules on a partial update.
 - Facade aliases in `src/` and the routes (`use Str;`, bare `Route::`, `App::`, `Log::`) are imports.
+- `config/lu/models.php` keeps every key and is rewritten in the order a reader meets the package, one
+  sentence per key. Larastan runs at level 6 with no baseline; the coverage floor is 95.
 - **Plain keys for signed-in callers.** `show`, `edit`, `update` and `destroy` accept the plain key, the
   encrypted key or a slug from a signed-in caller; the policy decides what they reach. A guest still needs
   the encrypted key unless the model opts in (`$allow_public_access_by_id`, `$allow_public_access_by_slug`,

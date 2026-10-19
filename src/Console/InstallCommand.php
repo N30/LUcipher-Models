@@ -39,10 +39,13 @@ class InstallCommand extends Command
             $this->components->twoColumnDetail('config/lu/models.php', '<info>published</>');
         }
 
-        $before = count(File::glob(database_path('migrations/*_create_lu_models_audit_table.php')));
-        $this->callSilently('vendor:publish', ['--tag' => 'lu-models-migrations']);
-        $after = count(File::glob(database_path('migrations/*_create_lu_models_audit_table.php')));
-        $this->components->twoColumnDetail('database/migrations/…_create_lu_models_audit_table.php', $after > $before ? '<info>published</>' : '<fg=yellow>already present</>');
+        // published once, whatever timestamp Laravel stamped it with the first time
+        if (File::glob(database_path('migrations/*_create_lu_models_audit_table.php')) !== []) {
+            $this->components->twoColumnDetail('database/migrations/…_create_lu_models_audit_table.php', '<fg=yellow>already present</>');
+        } else {
+            $this->callSilently('vendor:publish', ['--tag' => 'lu-models-migrations']);
+            $this->components->twoColumnDetail('database/migrations/…_create_lu_models_audit_table.php', '<info>published</>');
+        }
 
         if ($this->option('views')) {
             $this->callSilently('vendor:publish', ['--tag' => 'lu-models-views', '--force' => (bool) $this->option('force')]);

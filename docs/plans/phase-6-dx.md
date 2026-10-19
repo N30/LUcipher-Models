@@ -1,6 +1,6 @@
 # Phase 6 — Developer experience
 
-**Status:** planned 2026-10-19 · **Depends on:** phase 5 · **Brief:** `lu:install`, publishable config, README, examples app, upgrade guide, coverage ≥ 90 % on `src/`.
+**Status:** done 2026-10-19 (report: `phase-6-report.md`) · **Depends on:** phase 5 · **Brief:** `lu:install`, publishable config, README, examples app, upgrade guide, coverage ≥ 90 % on `src/`.
 
 ## What
 
