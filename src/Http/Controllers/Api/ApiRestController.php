@@ -2,11 +2,13 @@
 
 namespace All1\LuModels\Http\Controllers\Api;
 
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ApiRestController extends ApiResourceController
 {
+    /** @return mixed */
     public function __invoke(Request $request)
     {
         $id = $request->route('id');
@@ -34,6 +36,10 @@ class ApiRestController extends ApiResourceController
         return false;
     }
 
+    /**
+     * @param  mixed  $data
+     * @return View
+     */
     public function chooseView($data)
     {
 

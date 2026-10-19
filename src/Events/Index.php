@@ -4,6 +4,7 @@ namespace All1\LuModels\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -15,14 +16,21 @@ class Index
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /** @var Model */
     public $model;
 
+    /** @var array<string, mixed> */
     public $data;
 
+    /** @var string|null */
     public $controller_type;
 
     /**
      * Create a new event instance.
+     *
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     * @param  string|null  $controller_type
      */
     public function __construct($model, $data, $controller_type)
     {

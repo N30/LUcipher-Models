@@ -25,6 +25,7 @@ class User extends Authenticatable
         return $this->is_admin;
     }
 
+    /** @return HasMany<Post, $this> */
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);

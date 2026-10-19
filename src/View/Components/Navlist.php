@@ -9,10 +9,13 @@ use Illuminate\View\Component;
 
 class Navlist extends Component
 {
+    /** @var string */
     public $type;
 
     /**
      * Create a new component instance.
+     *
+     * @param  string  $type
      */
     public function __construct($type = 'spa')
     {

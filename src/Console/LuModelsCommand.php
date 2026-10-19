@@ -88,7 +88,7 @@ class LuModelsCommand extends Command
         $this->components->twoColumnDetail('Route slug', $d->slug);
         $this->components->twoColumnDetail('Transports', $d->transports === [] ? '<fg=yellow>none — list it in lu::models.models or declare $lu_transports</>' : implode(', ', $d->transports).'  (enabled globally: '.$this->enabledTransports().')');
         $this->components->twoColumnDetail('Policy', $this->policyCell($d));
-        $this->components->twoColumnDetail('Rate limits', collect(config('lu::models.rate_limits', []))->map(fn ($v, $k) => $k.'='.($v ?? 'off'))->implode(', '));
+        $this->components->twoColumnDetail('Rate limits', collect((array) config('lu::models.rate_limits', []))->map(fn ($v, $k) => $k.'='.($v ?? 'off'))->implode(', '));
         $this->components->twoColumnDetail('Audit', $this->auditCell());
         $this->newLine();
 

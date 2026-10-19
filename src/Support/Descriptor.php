@@ -21,6 +21,8 @@ use Illuminate\Support\Str;
  *
  * Nothing in here varies within a deploy, so it is cached under lu_models.descriptor.{class} in the
  * configured store (lu::models.descriptor_cache) until Descriptor::forget()/flush() or cache:clear.
+ *
+ * @implements Arrayable<string, mixed>
  */
 final class Descriptor implements Arrayable
 {
@@ -254,6 +256,7 @@ final class Descriptor implements Arrayable
         return get_object_vars($this);
     }
 
+    /** @param  array<string, mixed>  $data */
     public static function fromArray(array $data): self
     {
         return new self(...$data);

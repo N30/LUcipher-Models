@@ -10,6 +10,11 @@ class PostPolicy
     /** @var list<array{0: mixed, 1: mixed, 2: mixed}> what index() was called with, beyond the user */
     public static array $indexCalls = [];
 
+    /**
+     * @param  mixed  $post
+     * @param  mixed  $data
+     * @param  mixed  $controllerType
+     */
     public function index(User $user, $post = null, $data = null, $controllerType = null): bool
     {
         static::$indexCalls[] = [$post, $data, $controllerType];

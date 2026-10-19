@@ -6,6 +6,7 @@ use All1\LuModels\Livewire\Concerns\InteractsWithResource;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Keys;
 use All1\LuModels\Support\Writer;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -79,6 +80,7 @@ class Index extends Component
         $this->resetPage();
     }
 
+    /** @return View */
     public function render()
     {
         $params = array_filter(

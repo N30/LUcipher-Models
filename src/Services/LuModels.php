@@ -2,6 +2,7 @@
 
 namespace All1\LuModels\Services;
 
+use All1\LuModels\Actions\Action;
 use All1\LuModels\Actions\Create;
 use All1\LuModels\Actions\Delete;
 use All1\LuModels\Actions\Index;
@@ -21,21 +22,33 @@ use Illuminate\Support\Str;
 
 class LuModels
 {
+    /** @var array<string, mixed> */
     public $controller_data = [];
 
+    /** @var Model|null */
     public $model;
 
+    /** @var string|null */
     public $type;
 
+    /** @var mixed */
     public $data;
 
+    /** @var array<int|string, string>|null */
     public $db_columns;
 
+    /** @var array<string, mixed> */
     public $filters = [];
 
+    /** @var string|null */
     public $controller_type;
 
     // force_model is for livewire initiliing when there is no request()->reoute('model')
+    /**
+     * @param  string  $type
+     * @param  string|null  $force_model
+     * @return array<string, mixed>
+     */
     public function controller_initialize($type = 'api', $force_model = null)
     {
 
@@ -138,7 +151,11 @@ class LuModels
     }
 
     /** The listing: paginated unless the request asks for a flat `limit`. */
-    /** @param  array<string, mixed>  $params  the listing's query grammar: request()->all() over HTTP, the component's state on /spa */
+    /**
+     * @param  array<string, mixed>  $params  the listing's query grammar: request()->all() over HTTP, the component's state on /spa
+     * @param  Model  $model
+     * @return mixed
+     */
     public function controller_index($model, array $params = [])
     {
         $this->model = $model;
@@ -146,7 +163,12 @@ class LuModels
         return $this->runQuery($model, 'index', null, ! array_key_exists('limit', $params), $params);
     }
 
-    /** One record, by the key the controller already resolved onto $model. */
+    /**
+     * One record, by the key the controller already resolved onto $model.
+     *
+     * @param  Model  $model
+     * @return mixed
+     */
     public function controller_show($model)
     {
         $this->model = $model;
@@ -175,8 +197,9 @@ class LuModels
      * checked against what the action may read: an unknown or hidden field is a 400 naming it,
      * never a silent probe.
      *
-     * @param  (callable(Builder): mixed)|null  $scope
+     * @param  (callable(Builder<Model>): mixed)|null  $scope
      * @param  array<string, mixed>  $params  the query grammar as data, so a Livewire component can feed its own state
+     * @return mixed
      */
     protected function runQuery(Model $model, string $read_action, ?callable $scope, bool $paginate, array $params = [])
     {
@@ -335,7 +358,11 @@ class LuModels
         return $data;
     }
 
-    /** One filter clause. $field and $op were checked against the readable fields and FILTER_OPERATORS. */
+    /**
+     * One filter clause. $field and $op were checked against the readable fields and FILTER_OPERATORS.
+     *
+     * @param  Builder<Model>  $query
+     */
     protected static function applyFilter(Builder $query, string $field, string $op, mixed $value): void
     {
         match ($op) {
@@ -413,7 +440,15 @@ class LuModels
         return $service;
     }
 
-    /** A dry run of $action: authorized, nothing written (Actions\Action::dryRun()). */
+    /**
+     * A dry run of $action: authorized, nothing written (Actions\Action::dryRun()).
+     *
+     * @param  string  $action
+     * @param  LuModels  $service
+     * @param  Model  $model
+     * @param  mixed  $data
+     * @param  string|null  $controller_type
+     */
     public static function wouldDo($action, $service, $model, $data, $controller_type): Result
     {
         $class = self::actionClass($action, $model);
@@ -421,6 +456,14 @@ class LuModels
         return app($class)->dryRun($service, $model, (array) $data, $controller_type);
     }
 
+    /**
+     * @param  string  $action
+     * @param  LuModels  $service
+     * @param  Model  $model
+     * @param  mixed  $data
+     * @param  string|null  $controller_type
+     * @return mixed
+     */
     public static function fromData($action, $service, $model, $data, $controller_type)
     {
 
@@ -439,6 +482,10 @@ class LuModels
      * v3.0.1: the name is built once. 3.0.0 checked App\LuModels\Actions\{folder}\… but then
      * instantiated App\Models\Actions\… (different root, folder dropped), so an override only ran
      * if the app defined both classes.
+     *
+     * @param  string  $action
+     * @param  Model  $model
+     * @return class-string<Action>
      */
     public static function actionClass($action, $model)
     {
@@ -448,6 +495,11 @@ class LuModels
         return class_exists($override) ? $override : "\All1\LuModels\Actions\\".ucfirst($action);
     }
 
+    /**
+     * @param  Model  $model
+     * @param  string  $action
+     * @return bool
+     */
     public static function can_public_access_model_for($model, $action)
     {
         $public_pages = $model->public_pages ?? [];
@@ -494,6 +546,12 @@ class LuModels
      * The gate every action passes before it touches the model: the configured super-admin method
      * first, then an explicit public opt-in for this model and action, then the model's policy.
      * A signed-in user hitting a model with no policy is denied, not let through.
+     *
+     * @param  string  $action
+     * @param  Model  $model
+     * @param  mixed  $data
+     * @param  string|null  $controller_type
+     * @return bool true when allowed; a refusal is a 403, never a false
      */
     public static function authorize($action, $model, $data, $controller_type)
     {
@@ -536,6 +594,13 @@ class LuModels
      * without authorizing: the app's Verb override when one exists, else the Action's perform(), then
      * the string event and the audit row. Kept for callers of 3.0.x; Actions\Action::execute() is the
      * code.
+     *
+     * @param  string  $action
+     * @param  LuModels  $service
+     * @param  Model  $model
+     * @param  mixed  $data
+     * @param  string|null  $controller_type
+     * @return LuModels
      */
     public function fireVerbs($action, $service, $model, $data, $controller_type)
     {
@@ -566,6 +631,10 @@ class LuModels
     /**
      * The Laravel string event a verb fires, e.g. "user.created" for Creation on a User model;
      * null for the read-only verbs (Revelation, Annexation), which fire none.
+     *
+     * @param  string  $verb
+     * @param  Model  $model
+     * @return string|null
      */
     public static function stringEventName($verb, $model)
     {

@@ -14,8 +14,10 @@ class DynamicLayout extends Component
 {
     public const EMPTY = 'lu_models::empty-layout';
 
+    /** @var string */
     public $layout;
 
+    /** @param  string  $layout */
     public function __construct($layout)
     {
         $this->layout = $layout;

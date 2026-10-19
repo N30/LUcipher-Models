@@ -16,6 +16,7 @@ class Event extends LuModel
 
     protected $casts = ['starts_on' => 'date', 'starts_at' => 'datetime', 'free' => 'boolean', 'meta' => 'array'];
 
+    /** @var array<string, string> */
     public $store_validation_rules = ['title' => 'required|string|max:80'];
 
     /** The shape spatie/laravel-sluggable gives: the writer reads generateSlugFrom[0]. */

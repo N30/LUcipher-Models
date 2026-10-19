@@ -23,10 +23,18 @@ abstract class Verb
     /** @var Model */
     public $model;
 
+    /** @var array<string, mixed> */
     public $data;
 
+    /** @var string|null */
     public $controller_type;
 
+    /**
+     * @param  LuModels  $service
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     * @param  string|null  $controller_type
+     */
     public function __construct($service, $model, $data, $controller_type)
     {
         $this->service = $service;
@@ -35,6 +43,7 @@ abstract class Verb
         $this->controller_type = $controller_type;
     }
 
+    /** @return LuModels */
     public function handle()
     {
         $action = static::ACTION;
@@ -44,7 +53,11 @@ abstract class Verb
         return $this->service;
     }
 
-    /** @deprecated 3.1 Use Actions\Action::appEventClass(). */
+    /**
+     * @deprecated 3.1 Use Actions\Action::appEventClass().
+     *
+     * @param  Model  $model
+     */
     public static function appEventClass($model, string $suffix): ?string
     {
         return Action::appEventClass($model, $suffix);

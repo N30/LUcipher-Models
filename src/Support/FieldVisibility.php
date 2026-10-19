@@ -78,8 +78,8 @@ final class FieldVisibility
     }
 
     /**
-     * @param  array<int, array|object>  $columns  schema descriptions with a Field key
-     * @return array<int, array|object> those the form for $action may write
+     * @param  array<int, array<string, mixed>|object>  $columns  schema descriptions with a Field key
+     * @return array<int, array<string, mixed>|object> those the form for $action may write
      */
     public function filterColumns(array $columns, string $action): array
     {

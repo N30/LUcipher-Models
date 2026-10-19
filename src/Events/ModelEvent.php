@@ -22,12 +22,20 @@ abstract class ModelEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /** @var Model */
     public $model;
 
+    /** @var array<string, mixed> */
     public $data;
 
+    /** @var string|null */
     public $controller_type;
 
+    /**
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     * @param  string|null  $controller_type
+     */
     public function __construct($model, $data, $controller_type)
     {
         $this->model = $model;
@@ -51,10 +59,6 @@ abstract class ModelEvent implements ShouldBroadcast
     /** @return array<int, Channel> */
     public function broadcastOn(): array
     {
-        if (! $this->model instanceof Model) {
-            return [];
-        }
-
         if ($pattern = config('lu::models.broadcast.channel')) {
             return [new PrivateChannel(Str::of($pattern)
                 ->replace('{table}', $this->model->getTable())
@@ -74,16 +78,14 @@ abstract class ModelEvent implements ShouldBroadcast
     /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
-        $attributes = $this->model instanceof Model ? $this->model->attributesToArray() : [];
+        $attributes = $this->model->attributesToArray();
 
         return [
             'action' => $this->action(),
-            'model' => $this->model instanceof Model ? get_class($this->model) : null,
-            'key' => $this->model instanceof Model ? $this->model->getKey() : null,
-            'attributes' => $this->action() === 'deleted' ? ['id' => $this->model?->getKey()] : $attributes,
-            'changes' => $this->action() === 'updated' && $this->model instanceof Model
-                ? array_intersect_key($attributes, $this->model->getChanges())
-                : [],
+            'model' => get_class($this->model),
+            'key' => $this->model->getKey(),
+            'attributes' => $this->action() === 'deleted' ? ['id' => $this->model->getKey()] : $attributes,
+            'changes' => $this->action() === 'updated' ? array_intersect_key($attributes, $this->model->getChanges()) : [],
             'transport' => $this->controller_type,
         ];
     }

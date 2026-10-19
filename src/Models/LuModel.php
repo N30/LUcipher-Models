@@ -12,67 +12,94 @@ use ReflectionMethod;
 
 class LuModel extends Model
 {
+    /** @var list<string> */
     public $index_columns = ['id', 'created_at'];
 
     // these are removed from the API and also views from display
+    /** @var list<string> */
     public $hidden_columns = [];
 
     // Reminder that I am making this very unsecure specially with the modified query builder that allows all fields
     // so take necessary messures to secure this when and if it requires building models that are not read all and have sensitive columns
     // you can defined for all the xtra joins
+    /** @var array<string, list<string>> */
     public $index_relationships_columns = [
         /*  'relationship_name' => ['table_name.id', 'table_name.column_name'], and so on next row */
     ];
 
+    /** @var list<string> */
     public $default_search_columns;
 
     // default index sort column
+    /** @var string */
     public $index_default_sort = 'id';
 
+    /** @var string */
     public $index_default_order = 'DESC';
 
     // if not defined all relationships will be allowed as LuModel will get all 2 depth relationships
     // by detaul added, you can add as many as you want but for security reasons only ones whitelisted in index_columns show in resutls
+    /** @var list<string>|null */
     public $default_loaded_relationships;
 
     // needed for API assignment of these fields/whatever user can manipulate
+    /** @var string */
     public $action_folder = 'CRUD';
 
     // safety features for sensitive models that we never want hacked
     // creation safety uses create() with respect to $fillable
+    /** @var bool */
     public $creation_safety = true;
 
     // update safety uses fill() with respect to $fillable
+    /** @var bool */
     public $update_safety = true;
 
+    /** @var bool */
     public $read_safety = true;
 
+    /** @var bool */
     public $delete_safety = true;
 
     // allow public access to pages linke index, this can also be set in the config file globally for models
     // however if policy exists it will override this
+    /** @var list<string> */
     public $public_pages = []; // example: ['index', 'show'];
 
+    /** @var string|null */
     public $after_save_redirect; // show, edit, index, create
 
+    /** @var string|null */
     public $after_destroy_redirect; // show, edit, index, create
 
     // highly recommended to keep these off 99% of time if public needs access should be encrypted IDs
     // THE ONLY REASON I DIDN"T ENFORCE THIS WITHOUT AN OPTION IS FOR USAGE WHERE ANY SECURITY CONCERN IS RIDICULOUS
     // ALSO KEEP IN MIND THIS IS JUST FOR lu::web.resources ROUTES THAT ARE VERY DYNAMIC YOU CAN USE SLUGS WHERE IT MAKES SENSE IN PUBLIC CONTROLLERS
+    /** @var bool */
     public $allow_public_access_by_id = false; // for publicly accessible routes that cant be controlled by policy may be security concern
 
+    /** @var bool */
     public $allow_public_access_by_slug = false; // same for slugs though slight depending on model harder to guess
 
     /**
      * Let a guest name a record by plain key or slug (both opt-ins above at once). A signed-in caller
      * may always use a plain key: the policy decides what they reach (4.0; 3.0.x refused it).
+     *
+     * @var bool
      */
     public $allow_any_unencrypted_access = false; // SECURE THE FORT DOWN AND GIVE EVERYTHING AN ID
 
-    /** @deprecated 4.0 misspelling of $allow_any_unencrypted_access; still read as an alias */
+    /**
+     * @deprecated 4.0 misspelling of $allow_any_unencrypted_access; still read as an alias
+     *
+     * @var bool
+     */
     public $allow_any_unencrypred_access = false;
 
+    /**
+     * @param  string  $column
+     * @return mixed
+     */
     public function displayText($column)
     {
         $data = $this->$column;
@@ -80,6 +107,7 @@ class LuModel extends Model
         return is_iterable($data) ? (string) json_encode($data) : $data;
     }
 
+    /** @return list<string> */
     public function getModelRelationships()
     {
         $model = $this;
@@ -105,6 +133,7 @@ class LuModel extends Model
         return $relationships;
     }
 
+    /** @return array<class-string, array<string, mixed>> */
     public static function getModels()
     {
 
@@ -153,6 +182,10 @@ class LuModel extends Model
         return class_basename($class);
     }
 
+    /**
+     * @param  \SplFileInfo|string  $file
+     * @return string|null
+     */
     public static function getNamespaceFromFile($file)
     {
         $fileContents = file_get_contents($file);
@@ -164,6 +197,7 @@ class LuModel extends Model
     }
 
     // v3.0: filters were inverted in 2.x (getLuModels returned NON-lu models and vice versa) — fixed to match their names
+    /** @return array<class-string, array<string, mixed>> */
     public static function getLuModels()
     {
         $response = self::getModels();
@@ -176,6 +210,7 @@ class LuModel extends Model
         return $response;
     }
 
+    /** @return array<class-string, array<string, mixed>> */
     public static function getNonLuModels()
     {
         $response = self::getModels();
@@ -188,6 +223,10 @@ class LuModel extends Model
         return $response;
     }
 
+    /**
+     * @param  string  $model
+     * @return array<string, mixed>
+     */
     public static function getMetaData($model, ?string $relative = null)
     {
         $relative_namespace = $relative ?? self::relativeName((string) $model);
@@ -263,6 +302,13 @@ class LuModel extends Model
         ];
     }
 
+    /**
+     * @param  string  $action
+     * @param  LuModels  $service
+     * @param  array<string, mixed>  $data
+     * @param  string|null  $controller_type
+     * @return LuModels
+     */
     public function fromData($action, $service, $data, $controller_type)
     {
         // this seemingly redundant syntax way of writing this is the only way I was able to get it to work preserving the model without turning it inot parent model LuModel
@@ -271,11 +317,16 @@ class LuModel extends Model
         return $x->fromData($action, $service, $this, $data, $controller_type);
     }
 
+    /** @return string */
     public function viewFolder()
     {
         return static::viewFolderFor($this);
     }
 
+    /**
+     * @param  string  $action
+     * @return string
+     */
     public function viewFile($action)
     {
         return static::viewFileFor($this, $action);

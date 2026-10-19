@@ -88,7 +88,11 @@ final class Result
         return new JsonResponse($payload, $this->status);
     }
 
-    /** The 3.0.x array shape, for code that still reads $result['message']. */
+    /**
+     * The 3.0.x array shape, for code that still reads $result['message'].
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return array_filter([

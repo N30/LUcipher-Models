@@ -18,37 +18,37 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiResourceController
 {
+    /** @var Model|null */
     public $model;
 
+    /** @var string|null */
     public $route_prefix;
 
-    public $aciton;
-
+    /** @var string|null */
     public $model_name;
 
+    /** @var array<string, mixed>|null */
     public $meta;
 
+    /** @var string|null */
     public $action;
 
+    /** @var array<int, array<string, mixed>>|null */
     public $columns; // all columns of such type model from route slug
 
+    /** @var array<int|string, string>|null */
     public $db_columns; // all columns that were pulled buy query builder
 
+    /** @var array<string, mixed> */
     public $filters = [];
 
+    /** @var LuModels|null */
     public $service;
 
+    /** @var string|null */
     public $controller_type;
 
-    /* API DOCUMENTATION **
-
-    // GET /api/index/{model} list all records
-    //exampel: /api/index/events?limit=1&sort=title&order=DESC&filter=title:Prof.%20Richard%20Ondricka%20DDS&paginate=1&page=4
-    // GET /api/show/{model}/{id} show a single record
-    //example: /api/show/events/1
-
-    */
-
+    /** @var string|null the model slug a caller hands the constructor when there is no route (Livewire did) */
     public $force_model;
 
     /** Request keys that are never model input: the CSRF token, the method spoof and the dry-run switch. */
@@ -57,6 +57,7 @@ class ApiResourceController
     /** spl_object_id() of the request this instance was initialized for; another request re-initializes. */
     protected ?int $initializedForRequest = null;
 
+    /** @param  string|null  $force_model */
     public function __construct($force_model = null)
     {
         $this->force_model = $force_model;
@@ -98,13 +99,20 @@ class ApiResourceController
 
     /**
      * Display a listing of the resource.
+     *
+     * @return Response
      */
     public function __invoke(Request $request)
     {
         return $this->toResponse($this->runAction($request, $request->route('id')));
     }
 
-    /** Guard the HTTP method, run the action and hand back its raw result: the data for reads, an array for writes. */
+    /**
+     * Guard the HTTP method, run the action and hand back its raw result: the data for reads, an array for writes.
+     *
+     * @param  mixed  $id
+     * @return mixed
+     */
     protected function runAction(Request $request, $id)
     {
         $this->prepare($request);
@@ -116,6 +124,9 @@ class ApiResourceController
      * The API transport's answer: a Result as JSON with its status (422 with errors by field, 404
      * for a missing record, 200 otherwise); a read in one envelope: `{data, meta, links}` for a page,
      * `{data, meta: {count}}` for a flat list, `{data}` for one record.
+     *
+     * @param  mixed  $result
+     * @return Response
      */
     protected function toResponse($result)
     {
@@ -154,7 +165,11 @@ class ApiResourceController
         }
     }
 
-    /** The record $id names (Support\Keys): encrypted, plain or slug; guests only where the model opts in. */
+    /**
+     * The record $id names (Support\Keys): encrypted, plain or slug; guests only where the model opts in.
+     *
+     * @param  mixed  $id
+     */
     protected function findRecord($id, bool $guestOptIns = false): ?Model
     {
         return Keys::find($this->model, $id, $guestOptIns);
@@ -164,17 +179,26 @@ class ApiResourceController
      * v3.0.1: the record a write action produced. The package Verbs return the service (its
      * ->model is the record); an app's own Action or Verb override may still return the model
      * itself. Anything else falls back to the model the controller looked up.
+     *
+     * @param  mixed  $result
+     * @param  Model|null  $fallback
+     * @return Model|null
      */
     public static function recordOf($result, $fallback = null)
     {
         return Writer::recordOf($result, $fallback);
     }
 
+    /** @return mixed */
     public function create()
     {
         // nothing for API other controller types will override
     }
 
+    /**
+     * @param  mixed  $a
+     * @return mixed
+     */
     public function index($a = null)
     {
         $this->service = LuModels::fromData('index', $this->service, $this->model, request()->all(), $this->controller_type);
@@ -191,6 +215,10 @@ class ApiResourceController
         return $data;
     }
 
+    /**
+     * @param  mixed  $id
+     * @return Model
+     */
     public function show($id)
     {
         $this->model = $this->findRecord($id, guestOptIns: true) ?? abort(404, 'Record not found');
@@ -210,6 +238,10 @@ class ApiResourceController
         return $this->model;
     }
 
+    /**
+     * @param  mixed  $id
+     * @return Model
+     */
     public function edit($id)
     {
         $this->model = $this->findRecord($id, guestOptIns: true) ?? abort(404, 'Record not found');
@@ -220,6 +252,10 @@ class ApiResourceController
         return $this->model;
     }
 
+    /**
+     * @param  array<string, mixed>|null  $data
+     * @return Result
+     */
     public function store($data = null)
     {
         $data ??= request()->except(self::NOT_INPUT);
@@ -227,6 +263,11 @@ class ApiResourceController
         return Writer::create($this->model, $data, $this->controller_type, $this->dryRun());
     }
 
+    /**
+     * @param  mixed  $id
+     * @param  array<string, mixed>|null  $data
+     * @return Result
+     */
     public function update($id, $data = null)
     {
         $data ??= request()->except(self::NOT_INPUT);
@@ -239,6 +280,10 @@ class ApiResourceController
         return Writer::update($record, $data, $this->controller_type, $this->dryRun());
     }
 
+    /**
+     * @param  mixed  $id
+     * @return Result
+     */
     public function destroy($id)
     {
         $record = $this->findRecord($id);

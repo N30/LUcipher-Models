@@ -28,7 +28,12 @@ abstract class Action
     /** The request-facing name policies and public_* config use: index|create|show|update|delete. */
     abstract public function name(): string;
 
-    /** The state change or query. Returns the service carrying the result. */
+    /**
+     * The state change or query. Returns the service carrying the result.
+     *
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     */
     abstract public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels;
 
     /**
@@ -65,7 +70,11 @@ abstract class Action
         return ['type' => 'object', 'properties' => [], 'additionalProperties' => false];
     }
 
-    /** The schema of a write: the fields the action may write, minus what the package injects. */
+    /**
+     * The schema of a write: the fields the action may write, minus what the package injects.
+     *
+     * @return array<string, mixed>
+     */
     protected function writeSchema(Descriptor $descriptor, string $formAction, bool $requireNonNullable): array
     {
         $properties = [];
@@ -87,7 +96,11 @@ abstract class Action
         return ['type' => 'object', 'properties' => $properties, 'required' => $required, 'additionalProperties' => false];
     }
 
-    /** The schema of an operation that names one record. */
+    /**
+     * The schema of an operation that names one record.
+     *
+     * @return array<string, mixed>
+     */
     protected function keySchema(Descriptor $descriptor): array
     {
         return [
@@ -98,13 +111,24 @@ abstract class Action
         ];
     }
 
-    /** Static shim with the signature lorisleiva/laravel-actions gave these classes in 3.0.x. */
+    /**
+     * Static shim with the signature lorisleiva/laravel-actions gave these classes in 3.0.x.
+     *
+     * @param  mixed  ...$arguments
+     * @return mixed
+     */
     public static function run(...$arguments)
     {
         return app(static::class)->handle(...$arguments);
     }
 
-    /** Authorize, then execute. */
+    /**
+     * Authorize, then execute.
+     *
+     * @param  Model  $model
+     * @param  mixed  $data
+     * @param  string|null  $controller_type
+     */
     public function handle(LuModels $service, $model, $data, $controller_type): LuModels
     {
         $service->authorize($this->name(), $model, $data, $controller_type);
@@ -116,6 +140,9 @@ abstract class Action
      * Authorize, then stop: what this operation would do with $data, in the conditional, so no
      * transport can mistake it for work done (study §2.5). Nothing is written, no event fires, no
      * audit row is recorded. The transport validates before calling this, as it does before handle().
+     *
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
      */
     public function dryRun(LuModels $service, $model, array $data, ?string $controller_type): Result
     {
@@ -124,10 +151,15 @@ abstract class Action
         return Result::would($this->would($model, $data), $data);
     }
 
-    /** The conditional sentence of a dry run: "Would create Post", "Would update Post #5". */
+    /**
+     * The conditional sentence of a dry run: "Would create Post", "Would update Post #5".
+     *
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     */
     public function would($model, array $data): string
     {
-        $key = $model instanceof Model && $model->exists ? ' #'.$model->getKey() : '';
+        $key = $model->exists ? ' #'.$model->getKey() : '';
 
         return 'Would '.$this->name().' '.class_basename($model).$key;
     }
@@ -135,10 +167,13 @@ abstract class Action
     /**
      * Execute without authorizing: the app's legacy Verb override when one exists, else perform();
      * then the string event and the audit row for a write. LuModels::fireVerbs() lands here.
+     *
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
      */
     public function execute(LuModels $service, $model, array $data, ?string $controller_type): LuModels
     {
-        $before = $model instanceof Model && $model->exists ? $model->getRawOriginal() : [];
+        $before = $model->exists ? $model->getRawOriginal() : [];
 
         if ($override = $this->legacyVerbOverride($model)) {
             $service = (new $override($service, $model, $data, $controller_type))->handle();
@@ -148,12 +183,10 @@ abstract class Action
 
         $event_name = LuModels::stringEventName(static::VERB, $model);
         if ($event_name !== null) {
-            $payload_model = $service->model instanceof Model ? $service->model : $model;
+            $payload_model = $service->model ?? $model;
             event($event_name, ['model' => $payload_model, 'data' => $data, 'controller_type' => $controller_type]); // <-- THE EVENT YOU WANT TO LISTEN FOR IF USING LARAVEL BUILT-IN EVENTS
 
-            if ($payload_model instanceof Model) {
-                AuditLogger::record(Str::afterLast($event_name, '.'), $payload_model, $before, $controller_type);
-            }
+            AuditLogger::record(Str::afterLast($event_name, '.'), $payload_model, $before, $controller_type);
         }
 
         return $service;
@@ -162,6 +195,8 @@ abstract class Action
     /**
      * @deprecated 3.1 The Verb override seam, App\Models\Verbs\{folder}\{Model}{Verb}, still runs when an
      *             app defines it; new code overrides perform() through App\LuModels\Actions instead.
+     *
+     * @param  mixed  $model
      */
     protected function legacyVerbOverride($model): ?string
     {
@@ -177,6 +212,8 @@ abstract class Action
      * Whether a write-safety flag is on for this model. Fails closed: a model that does not declare the
      * flag is treated as safe, i.e. writes go through create()/update() and respect $fillable. Only an
      * explicit `false` opts a model out.
+     *
+     * @param  Model  $model
      */
     protected function safetyOn($model, string $flag): bool
     {
@@ -186,6 +223,8 @@ abstract class Action
     /**
      * The app's override for a Laravel Event, e.g. App\Events\CRUD\UserCreated for a User model and
      * the "Created" suffix, or null when the app defines none.
+     *
+     * @param  Model  $model
      */
     public static function appEventClass($model, string $suffix): ?string
     {
@@ -195,7 +234,12 @@ abstract class Action
         return class_exists($class) ? $class : null;
     }
 
-    /** Dispatch the app's Event override when it exists, else the package's default Event. */
+    /**
+     * Dispatch the app's Event override when it exists, else the package's default Event.
+     *
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     */
     protected function dispatchEvent($model, string $suffix, string $default, array $data, ?string $controller_type): void
     {
         $event = static::appEventClass($model, $suffix) ?? $default;

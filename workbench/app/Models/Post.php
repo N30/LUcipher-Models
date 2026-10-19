@@ -28,26 +28,36 @@ class Post extends LuModel
 
     protected $casts = ['published' => 'boolean'];
 
+    /** @var array<string, string> */
     public $lu_help = [
         'title' => 'Shown as the headline everywhere',
         'body' => 'Markdown is fine',
         'published' => 'Drafts are listed too; only you can see yours',
     ];
 
-    /** body is for the detail page and the forms; the listing stays narrow. */
+    /**
+     * body is for the detail page and the forms; the listing stays narrow.
+     *
+     * @var array<string, list<string>>
+     */
     public $lu_fields = ['body' => ['show', 'create', 'edit']];
 
+    /** @var list<string> */
     public $index_columns = ['id', 'title', 'published', 'created_at'];
 
+    /** @var array<string, string> */
     public $store_validation_rules = ['title' => 'required|string|max:120', 'body' => 'nullable|string', 'published' => 'boolean'];
 
+    /** @var array<string, string> */
     public $update_validation_rules = ['title' => 'string|max:120', 'body' => 'nullable|string', 'published' => 'boolean'];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return HasMany<Comment, $this> */
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);

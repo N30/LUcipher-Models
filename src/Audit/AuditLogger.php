@@ -43,7 +43,10 @@ final class AuditLogger
         ]);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $before
+     * @return array<string, mixed>
+     */
     public static function changes(string $action, Model $model, array $before): array
     {
         $after = match ($action) {
@@ -65,7 +68,10 @@ final class AuditLogger
         return array_filter(['before' => $before, 'after' => $after], fn ($side) => $side !== []);
     }
 
-    /** @param  array<string, mixed>  $values */
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
     private static function withoutHidden(Model $model, array $values): array
     {
         $hidden = [...$model->getHidden(), ...(array) ($model->hidden_columns ?? [])];

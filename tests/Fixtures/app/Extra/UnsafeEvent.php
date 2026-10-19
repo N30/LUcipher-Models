@@ -7,5 +7,6 @@ class UnsafeEvent extends Event
 {
     protected $fillable = ['title'];
 
+    /** @var bool */
     public $creation_safety = false;
 }

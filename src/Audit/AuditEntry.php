@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $transport web|rest|api|spa
  * @property int|null $user_id
  * @property string|null $ip
- * @property array|null $changes
+ * @property array<string, mixed>|null $changes
  */
 class AuditEntry extends Model
 {

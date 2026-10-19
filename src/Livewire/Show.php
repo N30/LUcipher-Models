@@ -7,6 +7,7 @@ use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Descriptor;
 use All1\LuModels\Support\FieldVisibility;
 use All1\LuModels\Support\Keys;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -24,6 +25,7 @@ class Show extends Component
         $this->key = $id;
     }
 
+    /** @return View */
     public function render()
     {
         $record = Keys::find($this->newModel(), $this->key) ?? abort(404, 'Record not found');

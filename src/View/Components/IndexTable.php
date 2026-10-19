@@ -16,16 +16,27 @@ use Illuminate\View\Component;
  */
 class IndexTable extends Component
 {
+    /** @var mixed */
     public $data;
 
+    /** @var string */
     public $type;
 
+    /** @var array<int|string, string>|null */
     public $dbColumns;
 
+    /** @var string */
     public $route_prefix;
 
     public ?Model $model;
 
+    /**
+     * @param  mixed  $data
+     * @param  array<int|string, string>|null  $dbColumns
+     * @param  string  $routePrefix
+     * @param  string  $type
+     * @param  mixed  $model
+     */
     public function __construct($data, $dbColumns, $routePrefix, $type, $model = null)
     {
         $this->data = $data;

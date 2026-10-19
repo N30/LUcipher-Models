@@ -7,6 +7,7 @@ use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Form as FormFields;
 use All1\LuModels\Support\Keys;
 use All1\LuModels\Support\Writer;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -61,6 +62,7 @@ class Form extends Component
         $this->redirectRoute('lu::spa.resources', ['model' => $this->routePrefix, 'action' => 'show', 'id' => $result->model?->getKey()], navigate: true);
     }
 
+    /** @return View */
     public function render()
     {
         return view('lu_models::livewire.form', [

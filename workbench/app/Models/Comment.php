@@ -18,15 +18,19 @@ class Comment extends Model
 {
     protected $fillable = ['post_id', 'body'];
 
+    /** @var array<string, string> */
     public $store_validation_rules = ['post_id' => 'required|integer|exists:posts,id', 'body' => 'required|string|max:2000'];
 
+    /** @var array<string, string> */
     public $update_validation_rules = ['body' => 'string|max:2000'];
 
+    /** @return BelongsTo<Post, $this> */
     public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

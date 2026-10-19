@@ -5,6 +5,7 @@ namespace All1\LuModels\Actions;
 use All1\LuModels\Events\Updated;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Descriptor;
+use Illuminate\Database\Eloquent\Model;
 
 /** Update a record through update() (respects $fillable) unless the model sets $update_safety = false. */
 class Update extends Action
@@ -21,6 +22,10 @@ class Update extends Action
         return $this->writeSchema($descriptor, 'edit', false);
     }
 
+    /**
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     */
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
     {
         if ($this->safetyOn($model, 'update_safety')) {

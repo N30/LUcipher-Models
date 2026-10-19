@@ -5,6 +5,7 @@ namespace All1\LuModels\Actions;
 use All1\LuModels\Events\Index as IndexEvent;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Descriptor;
+use Illuminate\Database\Eloquent\Model;
 
 /** List records: the service's index query, then the Index event. */
 class Index extends Action
@@ -59,6 +60,10 @@ class Index extends Action
         ];
     }
 
+    /**
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     */
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
     {
         $service->controller_index($model, $data);

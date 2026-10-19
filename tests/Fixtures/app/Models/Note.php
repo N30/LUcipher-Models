@@ -9,5 +9,6 @@ class Note extends Model
 {
     protected $fillable = ['body'];
 
+    /** @var list<string> */
     public $lu_transports = ['api'];
 }

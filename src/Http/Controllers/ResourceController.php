@@ -5,11 +5,13 @@ namespace All1\LuModels\Http\Controllers;
 use All1\LuModels\Http\Controllers\Api\ApiResourceController;
 use All1\LuModels\Models\LuModel;
 use All1\LuModels\Support\FieldVisibility;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ResourceController extends ApiResourceController
 {
+    /** @return mixed */
     public function __invoke(Request $request)
     {
         $model = $request->route('model');
@@ -63,6 +65,10 @@ class ResourceController extends ApiResourceController
         return false;
     }
 
+    /**
+     * @param  mixed  $data
+     * @return View
+     */
     public function chooseView($data)
     {
 

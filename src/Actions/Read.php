@@ -5,6 +5,7 @@ namespace All1\LuModels\Actions;
 use All1\LuModels\Events\Read as ReadEvent;
 use All1\LuModels\Services\LuModels;
 use All1\LuModels\Support\Descriptor;
+use Illuminate\Database\Eloquent\Model;
 
 /** Show one record: the service's show query, then the Read event. The policy ability is "show". */
 class Read extends Action
@@ -21,6 +22,10 @@ class Read extends Action
         return $this->keySchema($descriptor);
     }
 
+    /**
+     * @param  Model  $model
+     * @param  array<string, mixed>  $data
+     */
     public function perform(LuModels $service, $model, array $data, ?string $controller_type): LuModels
     {
         $service->controller_show($model);
