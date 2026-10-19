@@ -76,13 +76,8 @@ class LuModel extends Model
     public function displayText($column)
     {
         $data = $this->$column;
-        if (is_iterable($data)) {
-            // later this needs to be more presentable
-            // return json_encode($data);
-            return $data;
-        } else {
-            return $data;
-        }
+
+        return is_iterable($data) ? (string) json_encode($data) : $data;
     }
 
     public function getModelRelationships()

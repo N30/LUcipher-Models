@@ -74,7 +74,8 @@ class IndexTable extends Component
         $attribute = array_pop($segments);
         $related = $row;
         foreach ($segments as $segment) {
-            $related = $related instanceof Model ? $related->getRelation($segment) : null;
+            // a relation that was not loaded shows nothing, rather than failing the page
+            $related = $related instanceof Model && $related->relationLoaded($segment) ? $related->getRelation($segment) : null;
             if ($related === null) {
                 return [];
             }

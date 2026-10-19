@@ -38,10 +38,28 @@ return new class extends Migration
             $table->string('body');
             $table->timestamps();
         });
+
+        // every column kind the forms, the table and the writer have a branch for
+        Schema::create('events', function (Blueprint $table) {
+            $table->id();
+            $table->string('title', 80);
+            $table->date('starts_on')->nullable();
+            $table->dateTime('starts_at')->nullable();
+            $table->time('at')->nullable();
+            $table->integer('seats')->nullable();
+            $table->boolean('free')->default(false);
+            $table->string('contact_email')->nullable();
+            $table->json('meta')->nullable();
+            $table->string('ip_address')->nullable();
+            $table->string('user_agent')->nullable();
+            $table->string('slug')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('events');
         Schema::dropIfExists('memos');
         Schema::dropIfExists('notes');
         Schema::dropIfExists('posts');

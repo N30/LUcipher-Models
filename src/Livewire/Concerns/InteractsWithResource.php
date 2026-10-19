@@ -44,9 +44,4 @@ trait InteractsWithResource
     {
         $this->dispatch('lu-models:toast', type: $type, title: $title, message: $message);
     }
-
-    protected function resourceUrl(string $action, mixed $key = null): string
-    {
-        return route('lu::spa.resources', array_filter(['model' => $this->routePrefix, 'action' => $action, 'id' => $key], fn ($value) => $value !== null));
-    }
 }

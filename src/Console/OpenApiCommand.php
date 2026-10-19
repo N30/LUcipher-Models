@@ -18,11 +18,12 @@ class OpenApiCommand extends Command
         $json = json_encode(OpenApi::document(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
         if (($path = $this->argument('path')) !== null) {
-            if (file_put_contents((string) $path, $json."\n") === false) {
-                $this->components->error('Could not write '.$path);
+            if (! is_dir(dirname((string) $path)) || ! is_writable(dirname((string) $path))) {
+                $this->components->error('Could not write '.$path.': the directory does not exist or is not writable.');
 
                 return self::FAILURE;
             }
+            file_put_contents((string) $path, $json."\n");
             $this->components->info('OpenAPI document written to '.$path);
 
             return self::SUCCESS;
