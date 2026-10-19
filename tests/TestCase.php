@@ -42,6 +42,10 @@ abstract class TestCase extends Orchestra
             'foreign_key_constraints' => true,
         ]);
         $app['config']->set('auth.providers.users.model', User::class);
+        // pinned, so a skeleton .env left behind by `vendor/bin/testbench` (CACHE_STORE=database …) cannot reach the suite
+        $app['config']->set('cache.default', 'array');
+        $app['config']->set('session.driver', 'array');
+        $app['config']->set('queue.default', 'sync');
 
         foreach (['web', 'rest', 'api', 'spa', 'mcp'] as $transport) {
             $app['config']->set("lu::models.enable_{$transport}_routes", true);

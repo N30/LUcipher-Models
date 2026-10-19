@@ -8,5 +8,6 @@ parameters:
         - config
         - routes
         - tests/Fixtures/app
+        - workbench/app
     tmpDir: build/phpstan
     reportUnmatchedIgnoredErrors: true

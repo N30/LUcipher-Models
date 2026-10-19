@@ -28,7 +28,13 @@
         "coverage": "phpunit --coverage-text --coverage-html build/coverage/html",
         "lint": "pint --test",
         "lint:fix": "pint",
-        "analyse": "phpstan analyse --memory-limit=1G"
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@build",
+            "@php vendor/bin/testbench serve --ansi"
+        ],
+        "build": "@php vendor/bin/testbench workbench:build --ansi"
     },
     "replace": {
         "n30/lu_models": "self.version",
@@ -44,7 +50,9 @@
     "autoload-dev": {
         "psr-4": {
             "All1\\LuModels\\Tests\\": "tests/",
-            "App\\": "tests/Fixtures/app/"
+            "App\\": "tests/Fixtures/app/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
         }
     },
     "minimum-stability": "stable",

@@ -117,13 +117,13 @@ class LuModel extends Model
         if (! is_dir($modelPath)) {
             return [];
         }
-        $models = collect(\File::allFiles($modelPath))
-            ->map(fn ($file) => self::getNamespaceFromFile($file).'\\'.pathinfo($file, PATHINFO_FILENAME))
-            ->all();
         $response = [];
-        foreach ($models as $model) {
+        foreach (\File::allFiles($modelPath) as $file) {
+            $model = self::getNamespaceFromFile($file).'\\'.pathinfo($file, PATHINFO_FILENAME);
+            // the name relative to the models root (Admin\User for app/Models/Admin/User.php), whatever the namespace
+            $relative = str_replace('/', '\\', substr($file->getRelativePathname(), 0, -strlen('.'.$file->getExtension())));
 
-            $meta = self::getMetaData($model);
+            $meta = self::getMetaData($model, $relative);
             if (isset($meta['abstract']) && $meta['abstract']) {
                 continue;
             }
@@ -131,6 +131,31 @@ class LuModel extends Model
         }
 
         return $response;
+    }
+
+    /**
+     * A model's name relative to the models root, which names its route slug and view folder:
+     * App\Models\Admin\User is Admin\User. A model discovered under models_path is known by its path;
+     * any other model outside App\Models goes by its basename.
+     */
+    public static function relativeName(string $class): string
+    {
+        $class = ltrim($class, '\\');
+        if (str_starts_with($class, 'App\\Models\\')) {
+            return substr($class, strlen('App\\Models\\'));
+        }
+        try {
+            $discovered = self::getModels(); // needs an application (config, files); a bare container has none
+        } catch (\Throwable) {
+            $discovered = [];
+        }
+        foreach ($discovered as $known => $meta) {
+            if ($known === $class && isset($meta['relative'])) {
+                return $meta['relative'];
+            }
+        }
+
+        return class_basename($class);
     }
 
     public static function getNamespaceFromFile($file)
@@ -168,11 +193,9 @@ class LuModel extends Model
         return $response;
     }
 
-    public static function getMetaData($model)
+    public static function getMetaData($model, ?string $relative = null)
     {
-
-        $tmp = explode('\\', $model);
-        $relative_namespace = implode('\\', array_slice($tmp, 2));
+        $relative_namespace = $relative ?? self::relativeName((string) $model);
 
         $model_name = class_basename($model);
         $model_object = new $model;
@@ -241,6 +264,7 @@ class LuModel extends Model
             'route_group' => $route_group,
             'view_folder' => $view_folder,
             'extends_lu_model' => $implements_lumodel,
+            'relative' => $relative_namespace,
         ];
     }
 

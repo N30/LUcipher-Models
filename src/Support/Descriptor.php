@@ -126,7 +126,7 @@ final class Descriptor implements Arrayable
 
         // a bare container (plain unit tests) has no gate and no resource path; a Laravel app always does
         $policy = app()->bound(\Illuminate\Contracts\Auth\Access\Gate::class) ? Gate::getPolicyFor($instance) : null;
-        $relative = implode('\\', array_slice(explode('\\', $class), 2));
+        $relative = LuModel::relativeName($class); // Admin\User for App\Models\Admin\User, by path for a model discovered elsewhere
         $basename = class_basename($class);
         $friendly = preg_replace('/\B([A-Z])/', ' $1', $basename);
         $folder = $instance->action_folder ?? 'CRUD';

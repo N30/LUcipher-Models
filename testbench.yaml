@@ -1,5 +1,21 @@
-# Read by Larastan (through Testbench) so the package's own provider boots during static analysis
-# and the `lu_models::` view namespace resolves. The PHPUnit suite does not read this file: the
-# test case registers the provider itself (tests/TestCase.php).
+# Read by `vendor/bin/testbench` (the examples app: `composer serve`) and by Larastan, which boots the
+# package through Testbench so the lu_models:: view namespace resolves during analysis. The PHPUnit suite
+# does not read this file: tests/TestCase.php registers what it needs.
 providers:
+  - Workbench\App\Providers\WorkbenchServiceProvider
   - All1\LuModels\Providers\LuModelsServiceProvider
+
+migrations:
+  - workbench/database/migrations
+
+seeders:
+  - Workbench\Database\Seeders\DatabaseSeeder
+
+workbench:
+  start: /web/posts
+  user: demo@example.test
+  install: true
+  discovers:
+    web: true
+    views: true
+    components: true

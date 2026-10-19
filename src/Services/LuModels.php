@@ -55,7 +55,17 @@ class LuModels
 
             $this->controller_data['route_prefix'] = $model_variable;
 
-            $model_full_namespace = 'App\Models\\'.ucfirst($relative_namespace);
+            // a discovered model (models_path, any namespace) whose name relative to the models root matches
+            // the slug (posts → Post, admin~users → Admin\User) first; the App\Models guess for the rest
+            $model_full_namespace = null;
+            foreach (LuModel::getModels() as $class => $meta) {
+                if (strcasecmp((string) ($meta['relative'] ?? ''), $relative_namespace) === 0) {
+                    $model_full_namespace = $class;
+                    $this->controller_data['model_name'] = class_basename($class);
+                    break;
+                }
+            }
+            $model_full_namespace ??= 'App\Models\\'.ucfirst($relative_namespace);
 
             // check if the model exists
 
